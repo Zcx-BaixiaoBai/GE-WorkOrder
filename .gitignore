@@ -1,0 +1,95 @@
+# Build artifacts
+golden-eagle-kpi/build/
+golden-eagle-kpi/dist/
+golden-eagle-kpi/*.spec
+
+# Python cache
+__pycache__/
+*.py[cod]
+*.pyc
+**/__pycache__/
+
+# App data (contains user data)
+golden-eagle-kpi/data/
+data/
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+Thumbs.db
+.DS_Store
+
+# Test & temp
+test_screens/
+test_screens
+*.png
+*.log
+server.log
+server_err.log
+
+# Chunks and temp
+chunks/
+b64_tmp.txt
+*.json
+!package.json
+!tsconfig.json
+!rollup.config.js
+
+# Uploads and downloads
+downloads/
+mcp_20kb/
+
+# Backups
+backups/
+
+# Release packages (don't track zip/exe - too large, manage separately)
+releases/*.zip
+releases/*/*.exe
+
+# Specific temp scripts at root
+append_memory.py
+check_*.py
+test_*.py
+debug*.py
+batch*.json
+call_part*.json
+fix_*.py
+gen_*.py
+import*.py
+list_src*.py
+make_call*.py
+patch_*.py
+read_part*.py
+show_batch*.py
+split_*.py
+upload_*.py
+verify*.py
+do_push*.py
+push_*.json
+zip_parts*.json
+start_server.py
+restart.bat
+_api_test.ps1
+_curl_test.ps1
+_list_releases.ps1
+_split_zip.ps1
+check_release.py
+check_release2.py
+find_*.py
+test_handler_debug.py
+test_rank*.py
+test_warnings.py
+test_sync_debug.py
+test_export*.py
+test_both.py
+test_db.py
+test_project_filter.py
+test_role_filter.py
+test_multi*.py
+test_new_server.py
+test_ai*.py
+test_ai*.txt
+test_ctx_output.txt
+pyinstaller_log.txt

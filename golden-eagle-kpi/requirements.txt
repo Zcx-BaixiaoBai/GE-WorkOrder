@@ -1,0 +1,25 @@
+# 金鹰工单KPI管理系统 v0.0.5
+# 依赖列表 - 2026-04-17
+
+# Web框架
+fastapi==0.115.0
+uvicorn[standard]==0.31.0
+python-multipart==0.0.12
+
+# 数据库
+sqlalchemy==2.0.35
+
+# 认证
+pyjwt==2.9.0
+
+# Excel处理
+openpyxl==3.1.5
+
+# 任务调度
+apscheduler==3.10.4
+
+# 爬虫（Playwright需单独安装浏览器：python -m playwright install chromium）
+playwright==1.48.0
+
+# 文件处理
+aiofiles==24.1.0
