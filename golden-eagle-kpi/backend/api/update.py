@@ -18,7 +18,7 @@ router = APIRouter(prefix="/api/update", tags=["更新"])
 
 GITEE_OWNER = "Zcx-BaixiaoBai"
 GITEE_REPO = "g-ai"
-CURRENT_VERSION = "v0.0.8post1"
+CURRENT_VERSION = "v0.0.9"
 
 
 def _load_token() -> str:
