@@ -43,7 +43,7 @@ def create_app() -> FastAPI:
     app = FastAPI(
         title="金鹰工单KPI管理",
         description="金鹰物业工单KPI管理系统后端API",
-        version="0.0.8post1",
+        version="0.0.10",
         lifespan=lifespan,
     )
 
@@ -77,6 +77,8 @@ def create_app() -> FastAPI:
     from backend.api.search_api import router as search_router
     from backend.api.ai_chat import router as ai_chat_router
     from backend.api.update import router as update_router
+    from backend.api.sync_wy import router as sync_wy_router
+    from backend.api.sync_ipms import router as sync_ipms_router
 
     app.include_router(auth_router)
     app.include_router(stats_router)
@@ -89,6 +91,8 @@ def create_app() -> FastAPI:
     app.include_router(search_router)
     app.include_router(ai_chat_router)
     app.include_router(update_router)
+    app.include_router(sync_wy_router)
+    app.include_router(sync_ipms_router)
 
     return app
 
