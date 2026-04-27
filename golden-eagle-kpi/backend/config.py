@@ -1,5 +1,6 @@
 """金鹰工单KPI管理 - 配置管理"""
 import os
+import sys
 from pathlib import Path
 
 
@@ -48,8 +49,14 @@ class AppConfig:
     """应用配置（单例模式，敏感值从环境变量读取）"""
 
     # 基础路径
-    BASE_DIR = Path(__file__).resolve().parent.parent
-    DATA_DIR = BASE_DIR / "data"
+    _frozen = getattr(sys, 'frozen', False)
+    if _frozen:
+        # frozen(exe)模式下：源码/前端在 _MEIPASS(_internal)，数据在exe旁边持久化
+        BASE_DIR = Path(getattr(sys, '_MEIPASS', Path(__file__).resolve().parent.parent))
+        DATA_DIR = Path(sys.executable).resolve().parent / "data"
+    else:
+        BASE_DIR = Path(__file__).resolve().parent.parent
+        DATA_DIR = BASE_DIR / "data"
     EXPORTS_DIR = DATA_DIR / "exports"
     LOGS_DIR = DATA_DIR / "logs"
     DB_PATH = DATA_DIR / "golden_eagle_kpi.db"

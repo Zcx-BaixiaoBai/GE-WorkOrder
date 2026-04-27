@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
-"""金鹰工单KPI v0.0.9 - 发布包构建脚本
+"""金鹰工单KPI v0.0.10 - 发布包构建脚本
 """
+import os
 import shutil
 import subprocess
 import sys
@@ -10,7 +11,7 @@ from pathlib import Path
 # ===================== 配置区 =====================
 # 注意：正式打包前，VERSION 文件中的版本号必须已经更新！
 APP_NAME = "金鹰工单KPI"
-VERSION = "v0.0.9"
+VERSION = "v0.0.10"
 DIST_DIR = Path("dist") / APP_NAME          # PyInstaller 输出目录
 RELEASE = Path("releases")                   # 最终发布目录
 RELEASE_PKG = RELEASE / f"{APP_NAME}-{VERSION}"
@@ -25,7 +26,27 @@ def get_version():
 
 def copytree(src: Path, dst: Path, ignore=None):
     if dst.exists():
-        shutil.rmtree(dst)
+        try:
+            shutil.rmtree(dst)
+        except PermissionError:
+            import subprocess
+            subprocess.run(['cmd', '/c', 'rmdir', '/S', '/Q', str(dst)], check=False, capture_output=True)
+    if dst.exists():
+        print(f"  警告: 无法删除旧目录，使用自定义复制")
+        # 手动复制，跳过被锁定的文件
+        import shutil as _shutil
+        for root, dirs, files in os.walk(src):
+            rel = os.path.relpath(root, src)
+            ddir = os.path.join(dst, rel)
+            os.makedirs(ddir, exist_ok=True)
+            for f in files:
+                sfile = os.path.join(root, f)
+                dfile = os.path.join(ddir, f)
+                try:
+                    _shutil.copy2(sfile, dfile)
+                except (PermissionError, OSError) as e:
+                    print(f"    跳过被锁定文件: {f}")
+        return
     shutil.copytree(src, dst, ignore=ignore)
 
 
@@ -63,8 +84,14 @@ def build_release():
 
     # 2. 创建发布目录并复制
     if RELEASE_PKG.exists():
-        shutil.rmtree(RELEASE_PKG)
-    RELEASE_PKG.mkdir(parents=True)
+        try:
+            shutil.rmtree(RELEASE_PKG)
+        except PermissionError:
+            import subprocess
+            subprocess.run(['cmd', '/c', 'rmdir', '/S', '/Q', str(RELEASE_PKG)], check=False)
+            if RELEASE_PKG.exists():
+                print(f"  警告: 无法删除旧release目录，尝试直接覆盖")
+    RELEASE_PKG.mkdir(parents=True, exist_ok=True)
 
     print("\n[2/8] 复制 PyInstaller dist 输出...")
     copytree(DIST_DIR, RELEASE_PKG)
@@ -92,6 +119,23 @@ def build_release():
     changelog.write_text(
         "金鹰工单KPI管理系统 更新日志\n"
         "============================\n"
+        "\n"
+        "【v0.0.10】2026-04-27\n"
+        "─────────────────────────────────\n"
+        "\n"
+        "◆ 同步功能全面修复\n"
+        "  - 修复 _update_progress 参数不匹配(TypeError导致同步崩溃)\n"
+        "  - 修复 frozen(exe)路径问题：数据持久化到exe旁边data/目录\n"
+        "  - 修复 圆环进度条display控制\n"
+        "  - 爬虫失败自动截图到data/logs/并记录日志\n"
+        "  - 新增空文件检测：下载0字节文件时抛异常而非静默通过\n"
+        "  - exe(pythonw)无控制台输出：重定向stdout到data/logs/app.log\n"
+        "\n"
+        "◆ 数据入库优化\n"
+        "  - 随手拍导入：普通模式读取处理合并单元格(merged_spans map)\n"
+        "  - 工单+随手拍并发入库(ThreadPoolExecutor)\n"
+        "  - 暴力覆盖策略：同步时先删旧数据再全量插入\n"
+        "\n"
         "\n"
         "【v0.0.9】2026-04-24\n"
         "─────────────────────────────────\n"
@@ -139,7 +183,7 @@ def build_release():
     print("\n[6/8] 生成 README.txt...")
     readme = RELEASE_PKG / "README.txt"
     readme.write_text(
-        "金鹰工单KPI管理系统 v0.0.9\n"
+        "金鹰工单KPI管理系统 v0.0.10\n"
         "============================\n"
         "\n"
         "[快速启动]\n"
@@ -169,10 +213,11 @@ def build_release():
         "  data/                数据存储（数据库、导出文件、日志）\n"
         "  tools/               高级工具脚本（数据库维护等）\n"
         "\n"
-        "[版本] v0.0.9 | 2026-04-24\n"
+        "[版本] v0.0.10 | 2026-04-27\n"
         "[更新说明]\n"
-        "  本次更新修复了随手拍数据同步丢失的严重Bug，\n"
-        "  修复后统计数量与BI原始数据一致\n",
+        "  同步功能全面修复：解决TypeError崩溃、frozen路径、\n"
+        "  爬虫失败截图、空文件检测、日志重定向等问题\n"
+        "  随手拍合并单元格处理优化，并发入库提升同步速度\n",
         encoding="utf-8",
     )
 

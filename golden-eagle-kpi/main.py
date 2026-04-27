@@ -1,6 +1,7 @@
 """金鹰工单KPI管理 - FastAPI应用入口"""
 import os
 import sys
+import logging
 from pathlib import Path
 from contextlib import asynccontextmanager
 
@@ -17,6 +18,41 @@ if getattr(sys, 'frozen', False):
     _meipass = getattr(sys, '_MEIPASS', '')
     if _meipass and _meipass not in sys.path:
         sys.path.insert(0, _meipass)
+
+# frozen(exe)模式下配置文件日志，解决pythonw无控制台输出的问题
+if getattr(sys, 'frozen', False):
+    AppConfig.ensure_dirs()
+    _log_file = AppConfig.LOGS_DIR / "app.log"
+    _file_handler = logging.FileHandler(_log_file, encoding="utf-8")
+    _file_handler.setFormatter(logging.Formatter("%(asctime)s [%(levelname)s] %(message)s"))
+    logging.root.addHandler(_file_handler)
+    logging.root.setLevel(logging.INFO)
+    # 不替换sys.stdout，避免uvicorn的formatter调用isatty()崩溃
+    # print输出仍然写入日志文件（通过logging handler已覆盖大部分）
+    # 爬虫的print通过下面的print hook捕获
+    _original_stdout = sys.stdout
+    _original_stderr = sys.stderr
+    class _TeeToLog:
+        """同时写入原始stdout和日志文件，保留isatty等属性"""
+        def __init__(self, original, log_file):
+            self._original = original
+            self._log_file = log_file
+        def write(self, msg):
+            self._original.write(msg)
+            if msg and msg.strip():
+                with open(self._log_file, "a", encoding="utf-8") as f:
+                    import datetime
+                    ts = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                    f.write(f"{ts} {msg}")
+                    if not msg.endswith("\n"):
+                        f.write("\n")
+        def flush(self):
+            self._original.flush()
+        def __getattr__(self, name):
+            # 代理所有其他属性（isatty, encoding等）给原始stdout
+            return getattr(self._original, name)
+    sys.stdout = _TeeToLog(_original_stdout, _log_file)
+    sys.stderr = _TeeToLog(_original_stderr, _log_file)
 
 
 @asynccontextmanager

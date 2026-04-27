@@ -1,13 +1,19 @@
 """金鹰工单KPI管理 - 数据同步服务
 
-流程：启动BI爬虫 → 下载Excel → openpyxl读取 → 清洗 → 暴力覆盖入库（先删后插）
+流程：启动BI爬虫 → 下载两个Excel → 并发入库（工单+随手拍同时写） → 刷新映射
+基于 v0.0.8 稳定版重写：
+- fetch_all 只登录一次，串行下载两个报表
+- 两个Excel都下载完后，用线程池并发入库
+- 随手拍导入使用普通模式读取（处理合并单元格）
 """
 import asyncio
 import os
 import shutil
 import traceback
+import json
 from datetime import datetime
 from pathlib import Path
+from concurrent.futures import ThreadPoolExecutor
 from sqlalchemy.orm import Session
 from sqlalchemy import text
 from backend.models.sync_log import SyncLog
@@ -27,46 +33,6 @@ _sync_status = {
     "last_sync_time": None,
     "last_sync_result": None,
 }
-
-
-def _clean_id(raw_id) -> str:
-    """工号清洗：科学计数法→字符串→补零到10位"""
-    if raw_id is None:
-        return "0000000000"
-    if isinstance(raw_id, float):
-        raw_id = str(int(raw_id))
-    raw_id = str(raw_id).strip()
-    if not raw_id or raw_id == 'None':
-        return "0000000000"
-    return raw_id.zfill(10)
-
-
-def _parse_datetime(val):
-    """解析各种日期时间格式"""
-    if val is None:
-        return None
-    if isinstance(val, datetime):
-        return val
-    s = str(val).strip()
-    if not s or s in ('None', 'NaT', ''):
-        return None
-    if len(s) == 14 and s.isdigit():
-        return datetime.strptime(s, "%Y%m%d%H%M%S")
-    if len(s) == 8 and s.isdigit():
-        return datetime.strptime(s, "%Y%m%d")
-    for fmt in ("%Y-%m-%d %H:%M:%S", "%Y-%m-%d %H:%M", "%Y-%m-%d",
-                "%Y/%m/%d %H:%M:%S", "%Y/%m/%d"):
-        try:
-            return datetime.strptime(s, fmt)
-        except ValueError:
-            continue
-    return None
-
-
-def _update_progress(start_pct: int, end_pct: int, internal_pct: float):
-    global _sync_status
-    p = start_pct + (end_pct - start_pct) * internal_pct
-    _sync_status["progress"] = int(min(p, end_pct))
 
 
 class SyncService:
@@ -99,90 +65,146 @@ class SyncService:
 
     @staticmethod
     async def _run_sync_task(account: str, password: str, project_id: int):
-        global _sync_status
+        """后台同步任务
+
+        进度分配：
+          0-5%   登录BI
+          5-45%  下载两个报表（串行）
+          45-90% 并发入库
+          90-100 刷新映射
+        """
         try:
             from backend.scraper.bi_client import BiClient
-        except ImportError:
-            _sync_status.update({"is_syncing": False, "progress": 0,
-                                 "message": "同步功能不可用：缺少Playwright库",
-                                 "last_sync_result": "failed", "current_task": None})
+        except ImportError as e:
+            _sync_status["is_syncing"] = False
+            _sync_status["progress"] = 0
+            _sync_status["message"] = f"同步功能不可用：{e}"
+            _sync_status["last_sync_result"] = "failed"
             return
 
-        _sync_status.update({"is_syncing": True, "current_task": "初始化...",
-                             "progress": 0, "message": ""})
+        # Playwright 环境预检
+        try:
+            from playwright.async_api import async_playwright
+            from playwright._impl._driver import compute_driver_executable
+            _info = compute_driver_executable()
+            _exe = _info[0] if isinstance(_info, tuple) else _info
+            if not Path(_exe).exists():
+                raise FileNotFoundError(f"Playwright node 不存在: {_exe}")
+        except ImportError as e:
+            _sync_status.update({"is_syncing": False, "progress": 0, "message": f"Playwright组件缺失: {e}", "last_sync_result": "failed"})
+            return
+        except FileNotFoundError as e:
+            _sync_status.update({"is_syncing": False, "progress": 0, "message": str(e), "last_sync_result": "failed"})
+            return
+        except Exception as e:
+            _sync_status.update({"is_syncing": False, "progress": 0, "message": f"Playwright检查失败: {e}", "last_sync_result": "failed"})
+            return
 
         db = get_session_local()()
-        sync_log = SyncLog(sync_type="full", project_id=project_id,
-                           status="running", started_at=datetime.now())
-        db.add(sync_log)
-        db.commit()
-        db.refresh(sync_log)
-        log_id = sync_log.id
-
         try:
-            client = BiClient(account=account, password=password)
-            _sync_status["current_task"] = "登录BI并下载报表..."
+            sync_log = SyncLog(sync_type="full", project_id=project_id, status="running", started_at=datetime.now())
+            db.add(sync_log); db.commit(); db.refresh(sync_log)
+            _sync_status["current_task"] = sync_log.id
+
+            # === 阶段1: 登录+下载 (0-45%) ===
+            _sync_status["message"] = "正在登录BI系统..."
             _sync_status["progress"] = 2
-            # 一次登录下载两个报表，比分开调用快一倍
+
+            client = BiClient(account, password)
             files = await client.fetch_all()
+
             tickets_file = files[0] if len(files) > 0 else None
             snapshots_file = files[1] if len(files) > 1 else None
+
             if tickets_file:
                 _sync_status["message"] = f"工单明细: {Path(tickets_file).name}"
             if snapshots_file:
                 _sync_status["message"] = f"随手拍: {Path(snapshots_file).name}"
+            _sync_status["progress"] = 45
 
-            _sync_status["current_task"] = "入库工单明细..."
-            _sync_status["progress"] = 40
+            # === 阶段2: 并发入库 (45-90%) ===
+            _sync_status["message"] = "正在入库数据..."
+            _sync_status["progress"] = 48
+
             ticket_result = {"imported": 0, "skipped": 0}
-            if tickets_file:
-                ticket_result = SyncService._import_tickets_from_excel(
-                    tickets_file, log_id, db,
-                    lambda p: _update_progress(_sync_status, 40, 80, p))
-
-            _sync_status["current_task"] = "入库随手拍..."
-            _sync_status["progress"] = 80
             snapshot_result = {"imported": 0, "skipped": 0}
-            if snapshots_file:
-                snapshot_result = SyncService._import_snapshots_from_excel(
-                    snapshots_file, log_id, db,
-                    lambda p: _update_progress(_sync_status, 80, 95, p))
 
-            _sync_status["current_task"] = "刷新映射..."
-            _sync_status["progress"] = 95
+            def _import_tickets():
+                nonlocal ticket_result
+                if not tickets_file:
+                    return
+                # 用独立session避免SQLite锁冲突
+                tdb = get_session_local()()
+                try:
+                    ticket_result = SyncService._import_tickets_from_excel(
+                        tickets_file, sync_log.id, tdb,
+                        progress_cb=lambda p: _update_progress(48, 70, p)
+                    )
+                finally:
+                    tdb.close()
+
+            def _import_snapshots():
+                nonlocal snapshot_result
+                if not snapshots_file:
+                    return
+                sdb = get_session_local()()
+                try:
+                    snapshot_result = SyncService._import_snapshots_from_excel(
+                        snapshots_file, sync_log.id, sdb,
+                        progress_cb=lambda p: _update_progress(48, 90, p)
+                    )
+                finally:
+                    sdb.close()
+
+            # 用线程池并发入库
+            loop = asyncio.get_event_loop()
+            with ThreadPoolExecutor(max_workers=2) as executor:
+                t_futures = []
+                if tickets_file:
+                    t_futures.append(loop.run_in_executor(executor, _import_tickets))
+                if snapshots_file:
+                    t_futures.append(loop.run_in_executor(executor, _import_snapshots))
+                if t_futures:
+                    await asyncio.gather(*t_futures)
+
+            _sync_status["progress"] = 90
+
+            # === 阶段3: 刷新映射 (90-100%) ===
+            _sync_status["message"] = "正在更新项目名称映射..."
             SyncService._refresh_name_mappings(db)
+            _sync_status["progress"] = 100
+            _sync_status["message"] = "同步完成"
+            _sync_status["last_sync_result"] = "completed"
 
-            sync_log.finished_at = datetime.now()
             sync_log.status = "completed"
+            sync_log.finished_at = datetime.now()
             sync_log.tickets_synced = ticket_result["imported"]
             sync_log.snapshots_synced = snapshot_result["imported"]
             db.commit()
-
-            _sync_status.update({
-                "is_syncing": False, "progress": 100,
-                "message": f"完成：工单{ticket_result['imported']}条，随手拍{snapshot_result['imported']}条",
-                "last_sync_time": sync_log.finished_at.isoformat(),
-                "last_sync_result": "success", "current_task": None})
+            _sync_status["last_sync_time"] = datetime.now().isoformat()
 
         except Exception as e:
-            tb = traceback.format_exc()
-            print(f"[同步] 异常: {e}\n{tb}")
-            sync_log.finished_at = datetime.now()
-            sync_log.status = "failed"
-            sync_log.error_message = str(e)[:500]
-            db.commit()
-            _sync_status.update({"is_syncing": False, "progress": 0,
-                                  "message": f"失败: {e}",
-                                  "last_sync_result": "failed", "current_task": None})
+            _sync_status["message"] = f"同步失败: {str(e)}"
+            _sync_status["last_sync_result"] = "failed"
+            traceback.print_exc()
+            if _sync_status.get("current_task"):
+                log = db.query(SyncLog).filter(SyncLog.id == _sync_status["current_task"]).first()
+                if log:
+                    log.status = "failed"
+                    log.finished_at = datetime.now()
+                    log.error_message = str(e)
+                    db.commit()
         finally:
             db.close()
+            _sync_status["is_syncing"] = False
+            _sync_status["current_task"] = None
+            asyncio.get_event_loop().call_later(5, _reset_sync_progress)
 
     @staticmethod
     def _import_tickets_from_excel(file_path: str, batch_id: int, db: Session,
-                                   progress_cb=None) -> dict:
+                                    progress_cb=None) -> dict:
+        """工单明细导入 - 基于 v0.0.8 稳定版"""
         import openpyxl
-        import json
-
         print(f"[同步] 读取工单明细: {Path(file_path).name}")
         wb = openpyxl.load_workbook(file_path, read_only=True, data_only=True)
         ws = wb.active
@@ -190,112 +212,105 @@ class SyncService:
         mappings = db.query(ProjectNameMapping).all()
         name_map = {m.bi_name: m.standard_name for m in mappings}
         projects = db.query(Project).all()
-        # O(1) 查找：标准名→id
         projects_by_name = {p.name: p.id for p in projects}
-        # O(1) 查找：bi别名→id
-        for p in projects:
-            if p.bi_names:
-                bi_list = json.loads(p.bi_names) if isinstance(p.bi_names, str) else p.bi_names
-                for bn in bi_list:
-                    projects_by_name[bn] = p.id
 
-        wt_deleted = db.query(WorkTicket).delete()
+        deleted = db.query(WorkTicket).filter(WorkTicket.source == "detail").delete()
         db.commit()
-        print(f"[同步] 已清除旧工单明细: work_tickets={wt_deleted}")
+        print(f"[同步] 已清除旧工单明细 {deleted} 条")
+        if progress_cb: progress_cb(0.05)
 
-        total_rows = sum(1 for _ in ws.iter_rows(min_row=2, values_only=True) if _)
+        # 先数总行
+        total_rows = sum(1 for _ in ws.iter_rows(min_row=2, values_only=True))
         wb.close()
         wb = openpyxl.load_workbook(file_path, read_only=True, data_only=True)
         ws = wb.active
 
-        imported = 0
-        skipped = 0
-        wt_batch = []
-
+        imported = skipped = 0
+        batch = []
         for row_idx, row in enumerate(ws.iter_rows(min_row=2, values_only=True), start=2):
             try:
-                if not row or len(row) < 6:
-                    skipped += 1
-                    continue
-                ticket_no = str(row[0] or "").strip()
-                if not ticket_no or ticket_no == 'None':
-                    skipped += 1
-                    continue
+                if not row or len(row) < 10:
+                    skipped += 1; continue
+                ticket_no = str(row[2] or "").strip()
+                if not ticket_no:
+                    skipped += 1; continue
 
-                raw_project = str(row[2] or "").strip()
-                standard_name = ""
-                project_id = None
-                if raw_project:
-                    mapped = name_map.get(raw_project)
-                    if mapped:
-                        standard_name = mapped
-                        project_id = projects_by_name.get(standard_name)
-                    else:
-                        # O(1) 命中 bi 别名
-                        project_id = projects_by_name.get(raw_project)
-                        if project_id:
-                            standard_name = raw_project
+                raw_project = str(row[1] or "").strip()
+                standard_name = name_map.get(raw_project, raw_project)
+                project_id = projects_by_name.get(standard_name)
+                brand = str(row[4] or "").strip()
+                order_type = str(row[7] or "").strip()
+                current_node = str(row[9] or "").strip()
+                if current_node == "已解决": order_status = "已完成"
+                elif current_node in ("待处理", "待派单", "待接单"): order_status = "待处理"
+                else: order_status = current_node or "处理中"
 
-                order_status = str(row[5] or "").strip()
-                if order_status == "已解决":
-                    order_status = "已完成"
+                initiator_id = _clean_id(row[11])
+                initiator_name = str(row[12] or "").strip()
+                create_time = _parse_datetime(row[5])
+                complete_time = _parse_datetime(row[20])
+                deadline = _parse_datetime(row[6])
+                accept_time = _parse_datetime(row[14])
+                area_name = str(row[3] or "").strip()
+                description = str(row[8] or "").strip()
 
-                wt_batch.append(WorkTicket(
-                    ticket_no=ticket_no, project_name=raw_project,
-                    standard_name=standard_name, project_id=project_id,
-                    order_type=str(row[4] or "").strip(),
-                    order_status=order_status,
-                    initiator_id=None, initiator_name=None,
-                    create_time=_parse_datetime(row[1]),
-                    accept_time=None,
-                    complete_time=_parse_datetime(row[6]) if len(row) > 6 else None,
-                    deadline=_parse_datetime(row[7]) if len(row) > 7 else None,
-                    area_name=None, description=None,
-                    sync_batch_id=batch_id, source="detail",
-                    ticket_type=str(row[4] or "").strip(),
-                    handler_id=_clean_id(row[8]) if len(row) > 8 and row[8] else None,
-                    handler_name=str(row[9] or "").strip() if len(row) > 9 else "",
-                    status=order_status,
-                    brand=str(row[10] or "").strip() if len(row) > 10 else "",
+                ticket_type = None
+                if brand == '秩序报修': ticket_type = '秩序报修'
+                elif brand == '保洁报修': ticket_type = '保洁报修'
+
+                batch.append(WorkTicket(
+                    ticket_no=ticket_no, project_name=raw_project, standard_name=standard_name,
+                    project_id=project_id, order_type=order_type, order_status=order_status,
+                    initiator_id=initiator_id, initiator_name=initiator_name,
+                    create_time=create_time, accept_time=accept_time, complete_time=complete_time,
+                    deadline=deadline, area_name=area_name,
+                    description=description[:500] if description else None,
+                    sync_batch_id=batch_id, source="detail", ticket_type=ticket_type, brand=brand,
                 ))
                 imported += 1
-                if len(wt_batch) >= 1000:
-                    db.bulk_save_objects(wt_batch)
-                    db.commit()
-                    wt_batch.clear()
-                    if progress_cb:
-                        progress_cb(0.1 + 0.8 * imported / total_rows)
-
+                if len(batch) >= 1000:
+                    db.bulk_save_objects(batch); db.commit(); batch.clear()
+                    if progress_cb and total_rows > 0:
+                        progress_cb(0.05 + 0.9 * (imported + skipped) / total_rows)
+                    print(f"  ...工单已导入 {imported} 条")
             except Exception as e:
                 skipped += 1
-                if skipped <= 10:
-                    print(f"  行{row_idx}异常: {e}")
-
-        if wt_batch:
-            db.bulk_save_objects(wt_batch)
-            db.commit()
+                if skipped <= 10: print(f"  行{row_idx}异常: {e}")
+        if batch:
+            db.bulk_save_objects(batch); db.commit()
         wb.close()
-        if progress_cb:
-            progress_cb(1.0)
-        print(f"[同步] 工单明细完成: 导入{imported}, 跳过{skipped}")
+        if progress_cb: progress_cb(1.0)
+        print(f"[同步] 工单导入完成: 导入{imported}, 跳过{skipped}")
         return {"imported": imported, "skipped": skipped}
 
     @staticmethod
     def _import_snapshots_from_excel(file_path: str, batch_id: int, db: Session,
-                                     progress_cb=None) -> dict:
-        """从随手拍Excel导入，使用 zip+XML 直接解析（无需openpyxl加载整个文件）。
-        性能：~9s vs 旧版 openpyxl 两遍 35s。
-        合并单元格处理：read_only 模式下合并首行有值、成员行为 None，
-        通过解析 sheetXML 中的 <mergeCells> 节点获取 span，按 span 展开写入。
-        """
-        import zipfile
-        import xml.etree.ElementTree as ET
-        import json
-        import re
+                                      progress_cb=None) -> dict:
+        """随手拍导入 - 使用普通模式处理合并单元格
 
+        v0.0.8 用 read_only=True，但合并单元格成员行值为None。
+        改用普通模式读取，预扫描构建 merged cell span map，
+        然后遍历时按 span 展开写入。
+        """
+        import openpyxl
         print(f"[同步] 读取随手拍: {Path(file_path).name}")
 
-        # ---- 构建映射表（一次DB查询，O(1)查找）----
+        # 普通模式（非read_only）读取，支持获取 merged_cells
+        wb = openpyxl.load_workbook(file_path, data_only=True)
+        ws = wb.active
+
+        # 构建合并单元格 span map: {(row, col): (value, end_row)}
+        # 合并单元格的值只存储在左上角，其他位置为None
+        merged_spans = {}  # (row, col) -> (top_left_row, top_left_col)
+        for merged_range in ws.merged_cells.ranges:
+            top_row, bottom_row = merged_range.min_row, merged_range.max_row
+            left_col, right_col = merged_range.min_col, merged_range.max_col
+            top_left_val = ws.cell(row=top_row, column=left_col).value
+            for r in range(top_row, bottom_row + 1):
+                for c in range(left_col, right_col + 1):
+                    if (r, c) != (top_row, left_col):
+                        merged_spans[(r, c)] = (top_row, left_col, top_left_val)
+
         mappings = db.query(ProjectNameMapping).all()
         name_map = {m.bi_name: m.standard_name for m in mappings}
         projects = db.query(Project).all()
@@ -304,190 +319,85 @@ class SyncService:
             if p.bi_names:
                 bi_list = json.loads(p.bi_names) if isinstance(p.bi_names, str) else p.bi_names
                 for bn in bi_list:
-                    projects_by_name[bn] = p.id
+                    if bn not in projects_by_name:
+                        projects_by_name[bn] = p.id
 
-        # ---- 删除旧数据 ----
+        # 暴力覆盖
         snap_deleted = db.query(Snapshot).delete()
         db.commit()
         print(f"[同步] 已清除旧随手拍: snapshots={snap_deleted}")
-        if progress_cb:
-            progress_cb(0.02)
+        if progress_cb: progress_cb(0.05)
 
-        # ---- 从 xlsx zip 直接读取 XML（绕过 openpyxl 加载整个文件）----
-        shared_strings = []
-        with zipfile.ZipFile(file_path, 'r') as z:
-            # 加载字符串表
-            if 'xl/sharedStrings.xml' in z.namelist():
-                with z.open('xl/sharedStrings.xml') as f:
-                    ns = 'http://schemas.openxmlformats.org/spreadsheetml/2006/main'
-                    for si in ET.parse(f).getroot().findall(f'{{{ns}}}si'):
-                        t = si.find(f'{{{ns}}}t')
-                        if t is not None:
-                            shared_strings.append(t.text or '')
-                        else:
-                            parts = [r.find(f'{{{ns}}}t').text or ''
-                                     for r in si.findall(f'{{{ns}}}r')
-                                     if r.find(f'{{{ns}}}t') is not None]
-                            shared_strings.append(''.join(parts))
-            # 读取 sheet1
-            with z.open('xl/worksheets/sheet1.xml') as f:
-                sheet_xml = f.read()
-
-        tree = ET.fromstring(sheet_xml)
-        ns = 'http://schemas.openxmlformats.org/spreadsheetml/2006/main'
-
-        # ---- 解析 mergeCells，构建 row_span 和 member_rows ----
-        row_span = {}
-        member_rows = set()
-        merge_el = tree.find(f'.//{{{ns}}}mergeCells')
-        if merge_el is not None:
-            for mc in merge_el.findall(f'{{{ns}}}mergeCell'):
-                ref = mc.get('ref', '')
-                if ':' not in ref:
-                    continue
-                parts = ref.split(':')
-                # 解析 A1 -> (1,1), B5 -> (5,2)
-                def col_num(c):
-                    n = 0
-                    for ch in c.upper():
-                        n = n * 26 + ord(ch) - 64
-                    return n
-                def parse_ref(r):
-                    m = re.match(r'([A-Z]+)(\d+)', r)
-                    return (int(m.group(2)), col_num(m.group(1))) if m else (1, 1)
-                r1, c1 = parse_ref(parts[0])
-                r2, c2 = parse_ref(parts[1])
-                if c2 >= 1 and c1 <= 5:  # 只处理A-E列
-                    span = r2 - r1 + 1
-                    row_span[r1] = span
-                    for r in range(r1 + 1, r2 + 1):
-                        member_rows.add(r)
-
-        print(f"[同步] 合并单元格: {len(row_span)}个首行, {len(member_rows)}个成员行")
-        if progress_cb:
-            progress_cb(0.05)
-
-        # ---- 解析所有单元格，构建 row_data ----
-        row_data = {}
-        for row_el in tree.findall(f'.//{{{ns}}}row'):
-            row_idx = int(row_el.get('r', 0))
-            if row_idx < 2:
-                continue
-            row_dict = {}
-            for c_el in row_el.findall(f'{{{ns}}}c'):
-                ref = c_el.get('r', '')
-                m = re.match(r'([A-Z]+)(\d+)', ref)
-                if not m:
-                    continue
-                col = col_num(m.group(1))
-                t_type = c_el.get('t', '')
-                v_el = c_el.find(f'{{{ns}}}v')
-                if v_el is None or v_el.text is None:
-                    row_dict[col] = None
-                    continue
-                if t_type == 's':
-                    row_dict[col] = shared_strings[int(v_el.text)]
-                else:
-                    row_dict[col] = v_el.text
-            row_data[row_idx] = row_dict
-
-        print(f"[同步] 解析行数: {len(row_data)}")
-        if progress_cb:
-            progress_cb(0.10)
-
-        # ---- 批量写入 ----
-        imported = 0
-        skipped = 0
+        total_rows = ws.max_row - 1 if ws.max_row else 0
+        imported = skipped = 0
         snap_batch = []
-        est_total = sum(row_span.values())
 
-        for row_idx in range(2, max(row_data.keys()) + 1):
-            if row_idx in member_rows:
-                continue
-            row = row_data.get(row_idx, {})
-            if not row:
-                skipped += 1
-                continue
+        for row_idx in range(2, ws.max_row + 1):
+            try:
+                def _cell(col):
+                    """获取单元格值，如果是合并单元格成员则返回左上角值"""
+                    val = ws.cell(row=row_idx, column=col).value
+                    if val is None and (row_idx, col) in merged_spans:
+                        _, _, val = merged_spans[(row_idx, col)]
+                    return val
 
-            span = row_span.get(row_idx, 1)
+                if _cell(1) is None and _cell(2) is None:
+                    skipped += 1; continue
 
-            # A-E列
-            emp_id_raw = row.get(1)    # A列：工号
-            emp_name_raw = row.get(2)  # B列：姓名
-            dept_raw = row.get(4)      # D列：部门/项目
+                ticket_no = f"S{row_idx:08d}"
+                initiator_id = _clean_id(_cell(1))
+                initiator_name = str(_cell(2) or "").strip()
+                create_time = _parse_datetime(_cell(6))
+                problem_type = str(_cell(7) or "").strip()
 
-            # F+列
-            time_val = row.get(6)          # F列：时间
-            problem_type = str(row.get(7) or '').strip()  # G列
-            desc_raw = row.get(8)                       # H列
-            raw_status = str(row.get(12) or '').strip() # L列：状态
-            complete_time_val = row.get(13)             # M列
-            handler_id_raw = row.get(14)                 # N列
-            handler_name_raw = row.get(15)               # O列
+                raw_status = str(_cell(12) or "").strip()
+                if raw_status == "已解决": order_status = "已完成"
+                elif raw_status in ("待处理", "未处理"): order_status = "待处理"
+                else: order_status = raw_status or "处理中"
 
-            if raw_status == "已解决":
-                order_status = "已完成"
-            elif raw_status in ("待处理", "未处理"):
-                order_status = "待处理"
-            else:
-                order_status = raw_status or "处理中"
+                complete_time = _parse_datetime(_cell(13))
 
-            # O(1) 项目解析
-            raw_project = ""
-            standard_name = ""
-            project_id = None
-            if dept_raw and '/' in str(dept_raw):
-                possible_name = str(dept_raw).split('/')[0].strip()
-                standard_name = name_map.get(possible_name, "")
-                if standard_name:
-                    project_id = projects_by_name.get(standard_name)
-                else:
-                    project_id = projects_by_name.get(possible_name)
-                    if project_id:
-                        standard_name = possible_name
-                if project_id:
-                    raw_project = possible_name
+                raw_project = standard_name = ""
+                project_id = None
+                dept = str(_cell(3) or "").strip()
+                if dept and '/' in dept:
+                    possible_name = dept.split('/')[0].strip()
+                    mapped = name_map.get(possible_name)
+                    if mapped:
+                        raw_project, standard_name = possible_name, mapped
+                        project_id = projects_by_name.get(standard_name)
+                    else:
+                        for p in projects:
+                            if p.name in possible_name or possible_name in p.name:
+                                standard_name, project_id, raw_project = p.name, p.id, possible_name
+                                break
 
-            initiator_id = _clean_id(emp_id_raw)
-            initiator_name = str(emp_name_raw or '').strip()
-            handler_id = _clean_id(handler_id_raw) if handler_id_raw else None
-            handler_name = str(handler_name_raw or '').strip() if handler_name_raw else ''
+                description = str(_cell(8) or "").strip()
 
-            for seq in range(span):
                 snap_batch.append(Snapshot(
-                    ticket_no=f"S{row_idx:08d}_{seq:02d}",
-                    project_name=raw_project,
-                    standard_name=standard_name,
-                    project_id=project_id,
-                    order_type=problem_type,
-                    order_status=order_status,
-                    initiator_id=initiator_id,
-                    initiator_name=initiator_name,
-                    handler_id=handler_id,
-                    handler_name=handler_name,
-                    create_time=_parse_datetime(time_val),
-                    complete_time=_parse_datetime(complete_time_val),
-                    area_name=str(dept_raw)[:50] if dept_raw else None,
-                    description=str(desc_raw)[:500] if desc_raw else None,
+                    ticket_no=ticket_no, project_name=raw_project, standard_name=standard_name,
+                    project_id=project_id, order_type=problem_type, order_status=order_status,
+                    initiator_id=initiator_id, initiator_name=initiator_name,
+                    create_time=create_time, complete_time=complete_time,
+                    area_name=dept[:50] if dept else None,
+                    description=description[:500] if description else None,
                     sync_batch_id=batch_id,
                 ))
                 imported += 1
-
-            if len(snap_batch) >= 1000:
-                db.bulk_save_objects(snap_batch)
-                db.commit()
-                snap_batch.clear()
-                if progress_cb and est_total > 0:
-                    progress_cb(0.10 + 0.88 * imported / est_total)
+                if len(snap_batch) >= 1000:
+                    db.bulk_save_objects(snap_batch); db.commit(); snap_batch.clear()
+                    if progress_cb and total_rows > 0:
+                        progress_cb(0.05 + 0.9 * (row_idx - 1) / total_rows)
+                    print(f"  ...随手拍已导入 {imported} 条")
+            except Exception as e:
+                skipped += 1
+                if skipped <= 10: print(f"  行{row_idx}异常: {e}")
 
         if snap_batch:
-            db.bulk_save_objects(snap_batch)
-            db.commit()
-
-        if progress_cb:
-            progress_cb(1.0)
-
-        print(f"[同步] 随手拍完成: 导入{imported}, 跳过{skipped}")
+            db.bulk_save_objects(snap_batch); db.commit()
+        wb.close()
+        if progress_cb: progress_cb(1.0)
+        print(f"[同步] 随手拍导入完成: 导入{imported}, 跳过{skipped}")
         return {"imported": imported, "skipped": skipped}
 
     @staticmethod
@@ -496,9 +406,7 @@ class SyncService:
             "SELECT DISTINCT project_name FROM work_tickets WHERE project_name IS NOT NULL"
         )).fetchall()
         for (raw_name,) in raw_names:
-            existing = db.query(ProjectNameMapping).filter(
-                ProjectNameMapping.bi_name == raw_name
-            ).first()
+            existing = db.query(ProjectNameMapping).filter(ProjectNameMapping.bi_name == raw_name).first()
             if not existing:
                 db.add(ProjectNameMapping(bi_name=raw_name, standard_name=raw_name, source="bi"))
         db.commit()
@@ -509,21 +417,46 @@ class SyncService:
         total = query.count()
         items = query.offset((page - 1) * page_size).limit(page_size).all()
         return {
-            "total": total,
-            "page": page,
-            "pageSize": page_size,
+            "total": total, "page": page, "pageSize": page_size,
             "items": [
-                {
-                    "id": log.id,
-                    "syncType": log.sync_type,
-                    "projectId": str(log.project_id) if log.project_id else None,
-                    "status": log.status,
-                    "startedAt": log.started_at.isoformat() if log.started_at else None,
-                    "completedAt": log.finished_at.isoformat() if log.finished_at else None,
-                    "ticketsSynced": log.tickets_synced,
-                    "snapshotsSynced": log.snapshots_synced,
-                    "errorMessage": log.error_message,
-                }
+                {"id": log.id, "syncType": log.sync_type,
+                 "projectId": str(log.project_id) if log.project_id else None,
+                 "status": log.status,
+                 "startedAt": log.started_at.isoformat() if log.started_at else None,
+                 "completedAt": log.finished_at.isoformat() if log.finished_at else None,
+                 "ticketsSynced": log.tickets_synced, "snapshotsSynced": log.snapshots_synced,
+                 "errorMessage": log.error_message}
                 for log in items
             ],
         }
+
+
+def _clean_id(raw_id) -> str:
+    if raw_id is None: return "0000000000"
+    if isinstance(raw_id, float): raw_id = str(int(raw_id))
+    raw_id = str(raw_id).strip()
+    if not raw_id or raw_id == 'None': return "0000000000"
+    return raw_id.zfill(10)
+
+
+def _update_progress(start_pct: int, end_pct: int, internal_pct: float):
+    global _sync_status
+    p = start_pct + (end_pct - start_pct) * internal_pct
+    _sync_status["progress"] = int(min(p, end_pct))
+
+
+def _parse_datetime(val):
+    if val is None: return None
+    if isinstance(val, datetime): return val
+    s = str(val).strip()
+    if not s or s in ('None', 'NaT', ''): return None
+    if len(s) == 14 and s.isdigit(): return datetime.strptime(s, "%Y%m%d%H%M%S")
+    if len(s) == 8 and s.isdigit(): return datetime.strptime(s, "%Y%m%d")
+    for fmt in ("%Y-%m-%d %H:%M:%S", "%Y-%m-%d %H:%M", "%Y-%m-%d", "%Y/%m/%d %H:%M:%S", "%Y/%m/%d"):
+        try: return datetime.strptime(s, fmt)
+        except ValueError: continue
+    return None
+
+
+def _reset_sync_progress():
+    _sync_status["progress"] = 0

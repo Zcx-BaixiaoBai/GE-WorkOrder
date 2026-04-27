@@ -1297,7 +1297,7 @@
             <div class="topbar-actions">
                 <div id="syncRingWrap" style="position:relative;display:inline-flex;align-items:center;justify-content:center;width:36px;height:36px;">
                     <!-- 圆形进度环 SVG -->
-                    <svg id="syncProgressRing" width="38" height="38" viewBox="0 0 38 38" style="position:absolute;top:-1px;left:-1px;transform:rotate(-90deg);pointer-events:none;opacity:0;">
+                    <svg id="syncProgressRing" width="38" height="38" viewBox="0 0 38 38" style="position:absolute;top:-1px;left:-1px;transform:rotate(-90deg);pointer-events:none;opacity:0;display:none;">
                         <circle cx="19" cy="19" r="16" fill="none" stroke="rgba(255,255,255,0.25)" stroke-width="3"/>
                         <circle id="syncRingBar" cx="19" cy="19" r="16" fill="none" stroke="#7c3aed" stroke-width="3"
                             stroke-linecap="round"
@@ -5302,6 +5302,7 @@ async function loadWarnings() {
             const bar = document.getElementById('syncRingBar');
             const icon = document.getElementById('crawlerIcon');
             if (!ring || !bar) return;
+            ring.style.display = 'block';
             ring.style.opacity = '1';
 
             if (progress === 1) {
@@ -5342,7 +5343,10 @@ async function loadWarnings() {
             if (_syncAnimFrame) { cancelAnimationFrame(_syncAnimFrame); _syncAnimFrame = null; }
             _syncTargetProgress = 0;
             _syncCurrentProgress = 0;
-            if (ring) ring.style.opacity = '0';
+            if (ring) {
+                ring.style.display = 'none';
+                ring.style.opacity = '0';
+            }
             if (bar) {
                 // 瞬间归位，不带transition
                 bar.style.transition = 'none';
