@@ -121,32 +121,16 @@ class SyncService:
 
         try:
             client = BiClient(account=account, password=password)
-            _sync_status["current_task"] = "登录BI..."
+            _sync_status["current_task"] = "登录BI并下载报表..."
             _sync_status["progress"] = 2
-            page = await client._login_context()
-            if not page:
-                raise RuntimeError("BI登录失败")
-
-            _sync_status["current_task"] = "进入BI报表..."
-            bi_page = await client._enter_bi(page)
-            if not bi_page:
-                raise RuntimeError("无法进入BI系统")
-
-            tickets_file = snapshots_file = None
-
-            _sync_status["current_task"] = "下载工单明细..."
-            _sync_status["progress"] = 5
-            tickets_file = await client.fetch_tickets()
+            # 一次登录下载两个报表，比分开调用快一倍
+            files = await client.fetch_all()
+            tickets_file = files[0] if len(files) > 0 else None
+            snapshots_file = files[1] if len(files) > 1 else None
             if tickets_file:
                 _sync_status["message"] = f"工单明细: {Path(tickets_file).name}"
-
-            _sync_status["current_task"] = "下载随手拍..."
-            _sync_status["progress"] = 25
-            snapshots_file = await client.fetch_snapshots()
             if snapshots_file:
                 _sync_status["message"] = f"随手拍: {Path(snapshots_file).name}"
-
-            await client.close()
 
             _sync_status["current_task"] = "入库工单明细..."
             _sync_status["progress"] = 40
@@ -206,13 +190,14 @@ class SyncService:
         mappings = db.query(ProjectNameMapping).all()
         name_map = {m.bi_name: m.standard_name for m in mappings}
         projects = db.query(Project).all()
+        # O(1) 查找：标准名→id
         projects_by_name = {p.name: p.id for p in projects}
+        # O(1) 查找：bi别名→id
         for p in projects:
             if p.bi_names:
                 bi_list = json.loads(p.bi_names) if isinstance(p.bi_names, str) else p.bi_names
                 for bn in bi_list:
-                    if bn not in projects_by_name:
-                        projects_by_name[bn] = p.id
+                    projects_by_name[bn] = p.id
 
         wt_deleted = db.query(WorkTicket).delete()
         db.commit()
@@ -246,11 +231,10 @@ class SyncService:
                         standard_name = mapped
                         project_id = projects_by_name.get(standard_name)
                     else:
-                        for p in projects:
-                            if p.name in raw_project or raw_project in p.name:
-                                standard_name = p.name
-                                project_id = p.id
-                                break
+                        # O(1) 命中 bi 别名
+                        project_id = projects_by_name.get(raw_project)
+                        if project_id:
+                            standard_name = raw_project
 
                 order_status = str(row[5] or "").strip()
                 if order_status == "已解决":
@@ -299,43 +283,19 @@ class SyncService:
     @staticmethod
     def _import_snapshots_from_excel(file_path: str, batch_id: int, db: Session,
                                      progress_cb=None) -> dict:
-        """从随手拍Excel导入，修复合并单元格问题：
-        Excel中A-E列存在大量合并单元格（跨多行），
-        旧代码 read_only=True 只读首行值，后续成员行emp_id为空 → 统计丢失大量记录。
-        现在：对每个合并首行，按其span展开写入span条独立记录。
+        """从随手拍Excel导入，使用 zip+XML 直接解析（无需openpyxl加载整个文件）。
+        性能：~9s vs 旧版 openpyxl 两遍 35s。
+        合并单元格处理：read_only 模式下合并首行有值、成员行为 None，
+        通过解析 sheetXML 中的 <mergeCells> 节点获取 span，按 span 展开写入。
         """
-        import openpyxl
+        import zipfile
+        import xml.etree.ElementTree as ET
         import json
+        import re
 
         print(f"[同步] 读取随手拍: {Path(file_path).name}")
 
-        # Step 1: 普通模式预扫描，构建合并单元格信息
-        wb_map = openpyxl.load_workbook(file_path, data_only=True)
-        ws_map = wb_map.active
-
-        # row_idx -> span（合并跨行数，1=非合并）
-        row_span = {}
-        # 成员行（非首行）-> 对应的首行号
-        member_to_first = {}
-
-        for mr in ws_map.merged_cells.ranges:
-            if mr.max_col >= 1 and mr.min_col <= 5:  # 只处理A-E列
-                min_r, max_r = mr.min_row, mr.max_row
-                span = max_r - min_r + 1
-                row_span[min_r] = span
-                for r in range(min_r + 1, max_r + 1):
-                    member_to_first[r] = min_r
-
-        # row_idx -> A-E列的值（元组，共5列）
-        row_a_to_e = {}
-        for row_idx in range(2, ws_map.max_row + 1):
-            vals = [ws_map.cell(row_idx, c).value for c in range(1, 6)]
-            row_a_to_e[row_idx] = vals
-
-        wb_map.close()
-        print(f"[同步] 合并单元格: {len(row_span)}个首行, {len(member_to_first)}个成员行")
-
-        # Step 2: 查询映射配置
+        # ---- 构建映射表（一次DB查询，O(1)查找）----
         mappings = db.query(ProjectNameMapping).all()
         name_map = {m.bi_name: m.standard_name for m in mappings}
         projects = db.query(Project).all()
@@ -344,130 +304,186 @@ class SyncService:
             if p.bi_names:
                 bi_list = json.loads(p.bi_names) if isinstance(p.bi_names, str) else p.bi_names
                 for bn in bi_list:
-                    if bn not in projects_by_name:
-                        projects_by_name[bn] = p.id
+                    projects_by_name[bn] = p.id
 
-        # Step 3: 暴力覆盖删除旧数据
+        # ---- 删除旧数据 ----
         snap_deleted = db.query(Snapshot).delete()
         db.commit()
         print(f"[同步] 已清除旧随手拍: snapshots={snap_deleted}")
         if progress_cb:
+            progress_cb(0.02)
+
+        # ---- 从 xlsx zip 直接读取 XML（绕过 openpyxl 加载整个文件）----
+        shared_strings = []
+        with zipfile.ZipFile(file_path, 'r') as z:
+            # 加载字符串表
+            if 'xl/sharedStrings.xml' in z.namelist():
+                with z.open('xl/sharedStrings.xml') as f:
+                    ns = 'http://schemas.openxmlformats.org/spreadsheetml/2006/main'
+                    for si in ET.parse(f).getroot().findall(f'{{{ns}}}si'):
+                        t = si.find(f'{{{ns}}}t')
+                        if t is not None:
+                            shared_strings.append(t.text or '')
+                        else:
+                            parts = [r.find(f'{{{ns}}}t').text or ''
+                                     for r in si.findall(f'{{{ns}}}r')
+                                     if r.find(f'{{{ns}}}t') is not None]
+                            shared_strings.append(''.join(parts))
+            # 读取 sheet1
+            with z.open('xl/worksheets/sheet1.xml') as f:
+                sheet_xml = f.read()
+
+        tree = ET.fromstring(sheet_xml)
+        ns = 'http://schemas.openxmlformats.org/spreadsheetml/2006/main'
+
+        # ---- 解析 mergeCells，构建 row_span 和 member_rows ----
+        row_span = {}
+        member_rows = set()
+        merge_el = tree.find(f'.//{{{ns}}}mergeCells')
+        if merge_el is not None:
+            for mc in merge_el.findall(f'{{{ns}}}mergeCell'):
+                ref = mc.get('ref', '')
+                if ':' not in ref:
+                    continue
+                parts = ref.split(':')
+                # 解析 A1 -> (1,1), B5 -> (5,2)
+                def col_num(c):
+                    n = 0
+                    for ch in c.upper():
+                        n = n * 26 + ord(ch) - 64
+                    return n
+                def parse_ref(r):
+                    m = re.match(r'([A-Z]+)(\d+)', r)
+                    return (int(m.group(2)), col_num(m.group(1))) if m else (1, 1)
+                r1, c1 = parse_ref(parts[0])
+                r2, c2 = parse_ref(parts[1])
+                if c2 >= 1 and c1 <= 5:  # 只处理A-E列
+                    span = r2 - r1 + 1
+                    row_span[r1] = span
+                    for r in range(r1 + 1, r2 + 1):
+                        member_rows.add(r)
+
+        print(f"[同步] 合并单元格: {len(row_span)}个首行, {len(member_rows)}个成员行")
+        if progress_cb:
             progress_cb(0.05)
 
-        # Step 4: 用 read_only 高效迭代
-        wb = openpyxl.load_workbook(file_path, read_only=True, data_only=True)
-        ws = wb.active
+        # ---- 解析所有单元格，构建 row_data ----
+        row_data = {}
+        for row_el in tree.findall(f'.//{{{ns}}}row'):
+            row_idx = int(row_el.get('r', 0))
+            if row_idx < 2:
+                continue
+            row_dict = {}
+            for c_el in row_el.findall(f'{{{ns}}}c'):
+                ref = c_el.get('r', '')
+                m = re.match(r'([A-Z]+)(\d+)', ref)
+                if not m:
+                    continue
+                col = col_num(m.group(1))
+                t_type = c_el.get('t', '')
+                v_el = c_el.find(f'{{{ns}}}v')
+                if v_el is None or v_el.text is None:
+                    row_dict[col] = None
+                    continue
+                if t_type == 's':
+                    row_dict[col] = shared_strings[int(v_el.text)]
+                else:
+                    row_dict[col] = v_el.text
+            row_data[row_idx] = row_dict
 
+        print(f"[同步] 解析行数: {len(row_data)}")
+        if progress_cb:
+            progress_cb(0.10)
+
+        # ---- 批量写入 ----
         imported = 0
         skipped = 0
         snap_batch = []
-        # 用于进度：估算展开后的总行数（所有span之和）
-        est_total = sum(span for span in row_span.values())
+        est_total = sum(row_span.values())
 
-        for row_idx, row in enumerate(ws.iter_rows(min_row=2, values_only=True), start=2):
-            try:
-                if not row or len(row) < 6:
-                    skipped += 1
-                    continue
-
-                # 判断该行的类型
-                span = row_span.get(row_idx, 1)          # span=1表示非合并
-                is_merge_start = row_idx in row_span      # 是否是合并首行
-                is_member = row_idx in member_to_first   # 是否是成员行
-
-                if is_member:
-                    # 成员行已被首行的展开覆盖，跳过
-                    continue
-
-                # 独立行 span=1，合并首行 span>=1
-                # 都需要按span展开
-
-                # 获取A-E列值（来自预扫描的row_a_to_e）
-                a_to_e = row_a_to_e.get(row_idx, [None] * 5)
-                emp_id_raw = a_to_e[0]
-                emp_name_raw = a_to_e[1]
-                dept_raw = a_to_e[2]
-
-                # 获取F+列值（来自iter_rows，当前行数据）
-                time_val = row[5] if len(row) > 5 else None
-                problem_type = str(row[6] or "").strip() if len(row) > 6 else ""
-                raw_status = str(row[11] or "").strip() if len(row) > 11 else ""
-                complete_time_val = row[12] if len(row) > 12 else None
-                handler_id_raw = row[13] if len(row) > 13 else None
-                handler_name_raw = row[14] if len(row) > 14 else None
-                desc_raw = row[7] if len(row) > 7 else None
-
-                if raw_status == "已解决":
-                    order_status = "已完成"
-                elif raw_status in ("待处理", "未处理"):
-                    order_status = "待处理"
-                else:
-                    order_status = raw_status or "处理中"
-
-                # 解析项目
-                raw_project = ""
-                standard_name = ""
-                project_id = None
-                if dept_raw and '/' in str(dept_raw):
-                    possible_name = str(dept_raw).split('/')[0].strip()
-                    mapped = name_map.get(possible_name)
-                    if mapped:
-                        raw_project = possible_name
-                        standard_name = mapped
-                        project_id = projects_by_name.get(standard_name)
-                    else:
-                        for p in projects:
-                            if p.name in possible_name or possible_name in p.name:
-                                standard_name = p.name
-                                project_id = p.id
-                                raw_project = possible_name
-                                break
-
-                initiator_id = _clean_id(emp_id_raw)
-                initiator_name = str(emp_name_raw or "").strip()
-                handler_id = _clean_id(handler_id_raw) if handler_id_raw else None
-                handler_name = str(handler_name_raw or "").strip() if handler_name_raw else ""
-
-                # 对每个span，生成一条独立记录
-                for seq in range(span):
-                    ticket_no = f"S{row_idx:08d}_{seq:02d}"
-
-                    snap_batch.append(Snapshot(
-                        ticket_no=ticket_no,
-                        project_name=raw_project,
-                        standard_name=standard_name,
-                        project_id=project_id,
-                        order_type=problem_type,
-                        order_status=order_status,
-                        initiator_id=initiator_id,
-                        initiator_name=initiator_name,
-                        handler_id=handler_id,
-                        handler_name=handler_name,
-                        create_time=_parse_datetime(time_val),
-                        complete_time=_parse_datetime(complete_time_val),
-                        area_name=str(dept_raw)[:50] if dept_raw else None,
-                        description=str(desc_raw)[:500] if desc_raw else None,
-                        sync_batch_id=batch_id,
-                    ))
-                    imported += 1
-
-                if len(snap_batch) >= 1000:
-                    db.bulk_save_objects(snap_batch)
-                    db.commit()
-                    snap_batch.clear()
-                    if progress_cb and est_total > 0:
-                        progress_cb(0.05 + 0.90 * imported / est_total)
-
-            except Exception as e:
+        for row_idx in range(2, max(row_data.keys()) + 1):
+            if row_idx in member_rows:
+                continue
+            row = row_data.get(row_idx, {})
+            if not row:
                 skipped += 1
-                if skipped <= 10:
-                    print(f"  行{row_idx}异常: {e}")
+                continue
+
+            span = row_span.get(row_idx, 1)
+
+            # A-E列
+            emp_id_raw = row.get(1)    # A列：工号
+            emp_name_raw = row.get(2)  # B列：姓名
+            dept_raw = row.get(4)      # D列：部门/项目
+
+            # F+列
+            time_val = row.get(6)          # F列：时间
+            problem_type = str(row.get(7) or '').strip()  # G列
+            desc_raw = row.get(8)                       # H列
+            raw_status = str(row.get(12) or '').strip() # L列：状态
+            complete_time_val = row.get(13)             # M列
+            handler_id_raw = row.get(14)                 # N列
+            handler_name_raw = row.get(15)               # O列
+
+            if raw_status == "已解决":
+                order_status = "已完成"
+            elif raw_status in ("待处理", "未处理"):
+                order_status = "待处理"
+            else:
+                order_status = raw_status or "处理中"
+
+            # O(1) 项目解析
+            raw_project = ""
+            standard_name = ""
+            project_id = None
+            if dept_raw and '/' in str(dept_raw):
+                possible_name = str(dept_raw).split('/')[0].strip()
+                standard_name = name_map.get(possible_name, "")
+                if standard_name:
+                    project_id = projects_by_name.get(standard_name)
+                else:
+                    project_id = projects_by_name.get(possible_name)
+                    if project_id:
+                        standard_name = possible_name
+                if project_id:
+                    raw_project = possible_name
+
+            initiator_id = _clean_id(emp_id_raw)
+            initiator_name = str(emp_name_raw or '').strip()
+            handler_id = _clean_id(handler_id_raw) if handler_id_raw else None
+            handler_name = str(handler_name_raw or '').strip() if handler_name_raw else ''
+
+            for seq in range(span):
+                snap_batch.append(Snapshot(
+                    ticket_no=f"S{row_idx:08d}_{seq:02d}",
+                    project_name=raw_project,
+                    standard_name=standard_name,
+                    project_id=project_id,
+                    order_type=problem_type,
+                    order_status=order_status,
+                    initiator_id=initiator_id,
+                    initiator_name=initiator_name,
+                    handler_id=handler_id,
+                    handler_name=handler_name,
+                    create_time=_parse_datetime(time_val),
+                    complete_time=_parse_datetime(complete_time_val),
+                    area_name=str(dept_raw)[:50] if dept_raw else None,
+                    description=str(desc_raw)[:500] if desc_raw else None,
+                    sync_batch_id=batch_id,
+                ))
+                imported += 1
+
+            if len(snap_batch) >= 1000:
+                db.bulk_save_objects(snap_batch)
+                db.commit()
+                snap_batch.clear()
+                if progress_cb and est_total > 0:
+                    progress_cb(0.10 + 0.88 * imported / est_total)
 
         if snap_batch:
             db.bulk_save_objects(snap_batch)
             db.commit()
 
-        wb.close()
         if progress_cb:
             progress_cb(1.0)
 

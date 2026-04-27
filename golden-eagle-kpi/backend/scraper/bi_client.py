@@ -49,7 +49,7 @@ class BiClient:
         os.makedirs(self.download_dir, exist_ok=True)
 
     async def fetch_all(self) -> list[str]:
-        """抓取所有报表，返回下载的Excel文件路径列表"""
+        """抓取所有报表，两个报表并发下载"""
         async with self._create_browser() as (browser, ctx):
             try:
                 page = await self._login(ctx)
@@ -57,17 +57,38 @@ class BiClient:
                 if not bi_page:
                     raise RuntimeError("无法进入BI系统")
 
-                downloaded_files = []
-                for report in self.REPORTS:
-                    rname = report["name"]
-                    wait_long = report["wait_longer"]
+                # 同时开两个页面，分别下载工单明细和随手拍
+                page1 = await ctx.new_page()
+                page2 = await ctx.new_page()
 
-                    ok = await self._select_report(bi_page, rname)
-                    if ok:
-                        await self._fill_dates(bi_page, rname, wait_long)
-                        file_path = await self._export_excel(bi_page, rname, wait_long)
-                        if file_path:
-                            downloaded_files.append(file_path)
+                async def download_tickets():
+                    try:
+                        await self._select_report(page1, "工单明细查询表")
+                        await self._fill_dates(page1, "工单明细查询表")
+                        return await self._export_excel(page1, "工单明细查询表")
+                    finally:
+                        await page1.close()
+
+                async def download_snapshots():
+                    try:
+                        await self._select_report(page2, "随手拍工单统计明细表")
+                        await self._fill_dates(page2, "随手拍工单统计明细表", wait_longer=True)
+                        return await self._export_excel(page2, "随手拍工单统计明细表", wait_longer=True)
+                    finally:
+                        await page2.close()
+
+                results = await asyncio.gather(
+                    download_tickets(),
+                    download_snapshots(),
+                    return_exceptions=True
+                )
+
+                downloaded_files = []
+                for r in results:
+                    if isinstance(r, Exception):
+                        print(f"[爬虫] 报表下载异常: {r}")
+                    elif r:
+                        downloaded_files.append(r)
 
                 return downloaded_files
             finally:

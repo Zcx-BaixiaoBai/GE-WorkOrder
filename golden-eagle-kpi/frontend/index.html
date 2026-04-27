@@ -6,116 +6,159 @@
     <title>金鹰工单KPI管理</title>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:wght@400;500;600;700&display=swap');
         
         * { margin: 0; padding: 0; box-sizing: border-box; }
         
         :root {
-            --glass-bg: rgba(255, 255, 255, 0.08);
-            --glass-bg-elevated: rgba(255, 255, 255, 0.12);
-            --glass-border: rgba(255, 255, 255, 0.45);
-            --glass-border-strong: rgba(255, 255, 255, 0.65);
-            --glass-highlight: rgba(255, 255, 255, 0.8);
-            --glass-highlight-top: rgba(255, 255, 255, 0.95);
-            --glass-shadow: rgba(0, 0, 0, 0.08);
-            --glass-shadow-deep: rgba(0, 0, 0, 0.15);
-            --glass-inner-glow: rgba(255, 255, 255, 0.3);
-            --text-primary: #1a1a1a;
-            --text-secondary: rgba(0, 0, 0, 0.6);
-            --accent-pink: #ec4899;
-            --accent-purple: #8b5cf6;
-            --accent-blue: #3b82f6;
-            --accent-cyan: #06b6d4;
-            --accent-orange: #f97316;
-            --accent-red: #ef4444;
-            --accent-green: #10b981;
-            --accent-yellow: #f59e0b;
+            --glass-bg: #E8E8EC;
+            --glass-bg-elevated: #F0F0F3;
+            --glass-border: #D1D1D6;
+            --glass-border-strong: #B8A8D8;
+            --glass-highlight: rgba(0, 0, 0, 0.04);
+            --glass-highlight-top: rgba(0, 0, 0, 0.06);
+            --glass-shadow: #C5C5CF;
+            --glass-shadow-deep: #B0B0BA;
+            --glass-inner-glow: rgba(255, 255, 255, 0.6);
+            --text-primary: #1C1C1E;
+            --text-secondary: #6C6C7A;
+            --accent-pink: #B8A8D8;
+            --accent-purple: #7B5FBF;
+            --accent-blue: #4A8AF5;
+            --accent-cyan: #0EA5C9;
+            --accent-orange: #D97706;
+            --accent-red: #DC2626;
+            --accent-green: #059669;
+            --accent-yellow: #D97706;
+            --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+            --ease-smooth: cubic-bezier(0.4, 0, 0.2, 1);
+            --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
         }
         
         body.dark {
-            --glass-bg: rgba(120, 120, 128, 0.24);
-            --glass-bg-elevated: rgba(120, 120, 128, 0.36);
-            --glass-border: rgba(255, 255, 255, 0.1);
-            --glass-border-strong: rgba(255, 255, 255, 0.2);
-            --glass-highlight: rgba(255, 255, 255, 0.3);
-            --glass-highlight-top: rgba(255, 255, 255, 0.5);
-            --glass-shadow: rgba(0, 0, 0, 0.5);
-            --glass-shadow-deep: rgba(0, 0, 0, 0.7);
-            --glass-inner-glow: rgba(255, 255, 255, 0.1);
-            --text-primary: #ffffff;
-            --text-secondary: rgba(255, 255, 255, 0.6);
+            --glass-bg: #1E1E28;
+            --glass-bg-elevated: #252530;
+            --glass-border: #2A2A38;
+            --glass-border-strong: #A090C0;
+            --accent-pink: #A090C0;
+            --glass-highlight: rgba(255, 255, 255, 0.08);
+            --glass-highlight-top: rgba(255, 255, 255, 0.12);
+            --glass-shadow: #13131A;
+            --glass-shadow-deep: #0D0D12;
+            --glass-inner-glow: rgba(255, 255, 255, 0.02);
+            --text-primary: #E8E8EC;
+            --text-secondary: #8A8A95;
         }
         
         body {
-            font-family: 'Inter', -apple-system, sans-serif;
-            background: 
-                radial-gradient(ellipse 100% 80% at 10% 20%, rgba(139, 92, 246, 0.15) 0%, transparent 55%),
-                radial-gradient(ellipse 80% 70% at 90% 80%, rgba(236, 72, 153, 0.12) 0%, transparent 50%),
-                radial-gradient(ellipse 70% 60% at 50% 100%, rgba(6, 182, 212, 0.1) 0%, transparent 45%),
-                radial-gradient(ellipse 60% 50% at 80% 10%, rgba(59, 130, 246, 0.08) 0%, transparent 40%),
-                linear-gradient(rgba(0,0,0,0.02) 1px, transparent 1px),
-                linear-gradient(90deg, rgba(0,0,0,0.02) 1px, transparent 1px),
-                linear-gradient(180deg, #e8e8f0 0%, #dedee5 50%, #d4d4dc 100%);
-            background-size: 100% 100%, 100% 100%, 100% 100%, 100% 100%, 60px 60px, 60px 60px, 100% 100%;
+            margin: 0;
+            padding: 0;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: #E8E8EC;
             background-attachment: fixed;
             min-height: 100vh;
             color: var(--text-primary);
             font-size: 14px;
-            transition: background 0.5s ease;
+            transition: background 0.6s var(--ease-smooth);
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
         }
         
         body.dark {
-            background: 
-                radial-gradient(ellipse 100% 80% at 15% 25%, rgba(139, 92, 246, 0.25) 0%, transparent 55%),
-                radial-gradient(ellipse 80% 70% at 85% 75%, rgba(236, 72, 153, 0.2) 0%, transparent 50%),
-                radial-gradient(ellipse 70% 60% at 50% 100%, rgba(6, 182, 212, 0.15) 0%, transparent 45%),
-                radial-gradient(ellipse 60% 50% at 75% 15%, rgba(59, 130, 246, 0.12) 0%, transparent 40%),
-                linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px),
-                linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px),
-                linear-gradient(180deg, #0c0c0e 0%, #161618 50%, #202022 100%);
-            background-size: 100% 100%, 100% 100%, 100% 100%, 100% 100%, 60px 60px, 60px 60px, 100% 100%;
+            background: #1C1C24;
             background-attachment: fixed;
         }
         
-        /* ========== 基础玻璃效果 ========== */
+        /* ========== iOS 26 真正液态玻璃系统 ==========
+           核心公式：极低底色 + 强模糊 + 强饱和 + 硬镜面高光 + 清晰边界 + 强投影
+        */
         .glass {
-            background: linear-gradient(135deg, rgba(255, 255, 255, 0.4) 0%, rgba(255, 255, 255, 0.1) 50%, rgba(255, 255, 255, 0.05) 100%);
-            backdrop-filter: blur(40px) saturate(200%) brightness(1.1);
-            -webkit-backdrop-filter: blur(40px) saturate(200%) brightness(1.1);
-            border: 1.5px solid rgba(255, 255, 255, 0.6);
-            border-bottom-color: rgba(255, 255, 255, 0.3);
-            border-right-color: rgba(255, 255, 255, 0.35);
-            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1), 0 2px 8px rgba(0, 0, 0, 0.05), inset 0 1px 1px rgba(255, 255, 255, 0.8), inset 0 -1px 1px rgba(255, 255, 255, 0.2);
+            background: #E8E8EC;
+            border: 1px solid #D1D1D6;
+            border-bottom-color: #C5C5CF;
+            border-right-color: #C5C5CF;
+            box-shadow: 6px 6px 12px #C5C5CF, -6px -6px 12px #FFFFFF, inset -1px -1px 2px rgba(255,255,255,0.8);
             position: relative;
-            transition: box-shadow 0.3s ease;
+            transition: all 0.4s var(--ease-smooth);
+            overflow: hidden;
+        }
+        .glass:hover {
+            transform: translateY(-2px);
+            box-shadow: 10px 10px 20px #C5C5CF, -10px -10px 20px #FFFFFF, inset -1px -1px 2px rgba(255,255,255,0.9);
+            border-color: #B8A8D8;
         }
 
-        .glass:hover { box-shadow: 0 16px 48px rgba(0, 0, 0, 0.12), 0 4px 12px rgba(0, 0, 0, 0.06), inset 0 1px 1px rgba(255, 255, 255, 0.9), inset 0 -1px 1px rgba(255, 255, 255, 0.25); }
-        .glass::before { content: ''; position: absolute; top: 0; left: -100%; right: -100%; height: 60%; background: linear-gradient(115deg, transparent 0%, transparent 30%, rgba(255, 255, 255, 0.4) 45%, rgba(255, 255, 255, 0.6) 50%, rgba(255, 255, 255, 0.4) 55%, transparent 70%, transparent 100%); pointer-events: none; opacity: 0.6; }
-        .glass::after { content: ''; position: absolute; bottom: 0; left: 0; right: 0; height: 40%; background: linear-gradient(to top, rgba(0, 0, 0, 0.03) 0%, transparent 100%); pointer-events: none; }
-        
-        body.dark .glass { background: linear-gradient(135deg, rgba(60, 60, 65, 0.5) 0%, rgba(40, 40, 45, 0.25) 50%, rgba(30, 30, 35, 0.15) 100%); border: 1.5px solid rgba(255, 255, 255, 0.18); border-bottom-color: rgba(255, 255, 255, 0.08); border-right-color: rgba(255, 255, 255, 0.1); box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4), inset 0 1px 1px rgba(255, 255, 255, 0.15), inset 0 -1px 1px rgba(0, 0, 0, 0.2); }
-        body.dark .glass::before { background: linear-gradient(115deg, transparent 0%, transparent 30%, rgba(255, 255, 255, 0.15) 45%, rgba(255, 255, 255, 0.25) 50%, rgba(255, 255, 255, 0.15) 55%, transparent 70%, transparent 100%); opacity: 0.4; }
-        
-        .glass-strong { background: linear-gradient(180deg, rgba(255, 255, 255, 0.5) 0%, rgba(255, 255, 255, 0.2) 100%); backdrop-filter: blur(60px) saturate(220%) brightness(1.15); -webkit-backdrop-filter: blur(60px) saturate(220%) brightness(1.15); border: 1.5px solid rgba(255, 255, 255, 0.7); border-bottom-color: rgba(255, 255, 255, 0.35); box-shadow: 0 12px 40px rgba(0, 0, 0, 0.12), inset 0 1.5px 1px rgba(255, 255, 255, 0.9); position: relative; overflow: hidden; }
-        .glass-strong::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 50%; background: linear-gradient(180deg, rgba(255, 255, 255, 0.5) 0%, rgba(255, 255, 255, 0.1) 60%, transparent 100%); pointer-events: none; }
-        
-        body.dark .glass-strong { background: linear-gradient(180deg, rgba(80, 80, 85, 0.6) 0%, rgba(50, 50, 55, 0.35) 100%); border: 1.5px solid rgba(255, 255, 255, 0.22); border-bottom-color: rgba(255, 255, 255, 0.1); box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5), inset 0 1.5px 1px rgba(255, 255, 255, 0.25); }
-        
-        .glass-liquid { background: linear-gradient(135deg, rgba(255, 255, 255, 0.45) 0%, rgba(255, 255, 255, 0.15) 50%, rgba(255, 255, 255, 0.08) 100%); backdrop-filter: blur(50px) saturate(210%) brightness(1.12); -webkit-backdrop-filter: blur(50px) saturate(210%) brightness(1.12); border: 1.5px solid rgba(255, 255, 255, 0.65); border-bottom-color: rgba(255, 255, 255, 0.3); border-right-color: rgba(255, 255, 255, 0.35); box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1), 0 2px 8px rgba(0, 0, 0, 0.05), inset 0 1.5px 1px rgba(255, 255, 255, 0.85), inset 0 -1px 1px rgba(255, 255, 255, 0.2); position: relative; overflow: hidden; transition: transform 0.3s ease, box-shadow 0.3s ease; }
-        .glass-liquid::before { content: ''; position: absolute; top: 0; left: -50%; right: -50%; height: 70%; background: linear-gradient(115deg, transparent 0%, transparent 35%, rgba(255, 255, 255, 0.5) 48%, rgba(255, 255, 255, 0.7) 50%, rgba(255, 255, 255, 0.5) 52%, transparent 65%, transparent 100%); pointer-events: none; opacity: 0.7; }
-        .glass-liquid::after { content: ''; position: absolute; bottom: 0; left: 0; right: 0; height: 35%; background: linear-gradient(to top, rgba(0, 0, 0, 0.04) 0%, transparent 100%); pointer-events: none; }
-        
-        body.dark .glass-liquid { background: linear-gradient(135deg, rgba(70, 70, 75, 0.55) 0%, rgba(45, 45, 50, 0.3) 50%, rgba(35, 35, 40, 0.18) 100%); border: 1.5px solid rgba(255, 255, 255, 0.2); border-bottom-color: rgba(255, 255, 255, 0.1); border-right-color: rgba(255, 255, 255, 0.12); box-shadow: 0 8px 32px rgba(0, 0, 0, 0.45), inset 0 1.5px 1px rgba(255, 255, 255, 0.2), inset 0 -1px 1px rgba(0, 0, 0, 0.25); }
-        body.dark .glass-liquid::before { background: linear-gradient(115deg, transparent 0%, transparent 35%, rgba(255, 255, 255, 0.2) 48%, rgba(255, 255, 255, 0.3) 50%, rgba(255, 255, 255, 0.2) 52%, transparent 65%, transparent 100%); opacity: 0.5; }
-        
-        .glass-deep { background: linear-gradient(135deg, rgba(255, 255, 255, 0.35) 0%, rgba(255, 255, 255, 0.15) 100%); backdrop-filter: blur(30px) saturate(190%) brightness(1.08); -webkit-backdrop-filter: blur(30px) saturate(190%) brightness(1.08); border: 1px solid rgba(255, 255, 255, 0.5); border-bottom-color: rgba(255, 255, 255, 0.25); box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.6), inset 0 -1px 1px rgba(255, 255, 255, 0.15); position: relative; overflow: hidden; }
-        .glass-deep::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 40%; background: linear-gradient(180deg, rgba(255, 255, 255, 0.3) 0%, transparent 100%); pointer-events: none; }
-        
-        body.dark .glass-deep { background: linear-gradient(135deg, rgba(55, 55, 60, 0.45) 0%, rgba(35, 35, 40, 0.25) 100%); border: 1px solid rgba(255, 255, 255, 0.15); border-bottom-color: rgba(255, 255, 255, 0.08); box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.12), inset 0 -1px 1px rgba(0, 0, 0, 0.2); }
+        body.dark .glass {
+            background: #1E1E28;
+            border: 1px solid #2A2A38;
+            border-bottom-color: #13131A;
+            border-right-color: #13131A;
+            box-shadow: 6px 6px 12px #13131A, -6px -6px 12px #252530, inset -1px -1px 2px rgba(255,255,255,0.03);
+        }
+        body.dark .glass:hover {
+            transform: translateY(-2px);
+            box-shadow: 10px 10px 20px #13131A, -10px -10px 20px #252530, inset -1px -1px 2px rgba(255,255,255,0.05);
+            border-color: #A090C0;
+        }
+
+        .glass-strong {
+            background: #E8E8EC;
+            border: 1.5px solid #B8A8D8;
+            border-bottom-color: #C5C5CF;
+            border-right-color: #C5C5CF;
+            box-shadow: 8px 8px 16px #C5C5CF, -8px -8px 16px #FFFFFF, inset -1px -1px 2px rgba(255,255,255,0.8);
+            position: relative;
+            overflow: hidden;
+        }
+        body.dark .glass-strong {
+            background: #1E1E28;
+            border: 1.5px solid #A090C0;
+            border-bottom-color: #13131A;
+            border-right-color: #13131A;
+            box-shadow: 8px 8px 16px #13131A, -8px -8px 16px #252530, inset -1px -1px 2px rgba(255,255,255,0.03);
+        }
+
+        .glass-liquid {
+            background: #E8E8EC;
+            border: 1px solid #D1D1D6;
+            border-bottom-color: #C5C5CF;
+            border-right-color: #C5C5CF;
+            box-shadow: 5px 5px 10px #C5C5CF, -5px -5px 10px #FFFFFF, inset -1px -1px 2px rgba(255,255,255,0.8);
+            position: relative;
+            overflow: hidden;
+            transition: all 0.4s var(--ease-smooth);
+        }
+        .glass-liquid:hover {
+            transform: translateY(-3px) scale(1.005);
+            box-shadow: 8px 8px 16px #C5C5CF, -8px -8px 16px #FFFFFF, inset -1px -1px 2px rgba(255,255,255,0.9);
+        }
+        body.dark .glass-liquid {
+            background: #1E1E28;
+            border: 1px solid #2A2A38;
+            border-bottom-color: #13131A;
+            border-right-color: #13131A;
+            box-shadow: 5px 5px 10px #13131A, -5px -5px 10px #252530, inset -1px -1px 2px rgba(255,255,255,0.03);
+        }
+        body.dark .glass-liquid:hover {
+            box-shadow: 8px 8px 16px #13131A, -8px -8px 16px #252530, inset -1px -1px 2px rgba(255,255,255,0.05);
+        }
+
+        .glass-deep {
+            background: #E8E8EC;
+            border: 1px solid #D1D1D6;
+            box-shadow: inset 4px 4px 8px #C5C5CF, inset -4px -4px 8px #FFFFFF;
+            position: relative;
+            overflow: hidden;
+        }
+        body.dark .glass-deep {
+            background: #1E1E28;
+            border: 1px solid #2A2A38;
+            box-shadow: inset 4px 4px 8px #13131A, inset -4px -4px 8px #252530;
+        }
         
         /* ========== 加载动画 ========== */
-        .skeleton { background: linear-gradient(90deg, rgba(255,255,255,0.1) 25%, rgba(255,255,255,0.2) 50%, rgba(255,255,255,0.1) 75%); background-size: 200% 100%; animation: skeleton-loading 1.5s infinite; border-radius: 8px; }
+        .skeleton { background: linear-gradient(90deg, rgba(0,0,0,0.04) 25%, rgba(0,0,0,0.08) 50%, rgba(0,0,0,0.04) 75%); background-size: 200% 100%; animation: skeleton-loading 1.5s infinite; border-radius: 8px; }
+        body.dark .skeleton { background: linear-gradient(90deg, rgba(255,255,255,0.06) 25%, rgba(255,255,255,0.12) 50%, rgba(255,255,255,0.06) 75%); }
         @keyframes skeleton-loading { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
         
         .loading-spinner { width: 20px; height: 20px; border: 2px solid rgba(139, 92, 246, 0.2); border-top-color: var(--accent-purple); border-radius: 50%; animation: spin 0.8s linear infinite; }
@@ -124,35 +167,124 @@
         .pulse-dot { width: 8px; height: 8px; background: var(--accent-green); border-radius: 50%; animation: pulse 2s infinite; }
         @keyframes pulse { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.5; transform: scale(1.2); } }
         
-        /* ========== 顶部栏 ========== */
-        .topbar { position: fixed; top: 16px; left: 16px; right: 16px; height: 56px; border-radius: 28px; display: flex; align-items: center; padding: 0 24px; z-index: 100; }
-        .logo { display: flex; align-items: center; gap: 12px; font-weight: 600; font-size: 17px; }
-        .logo-icon { width: 32px; height: 32px; background: linear-gradient(135deg, var(--accent-pink), var(--accent-purple)); border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 16px; box-shadow: 0 4px 15px rgba(168, 85, 247, 0.4); }
-        .app-version { font-size: 11px; font-weight: 400; color: var(--text-secondary); opacity: 0.7; margin-left: 6px; }
-        
+        /* ========== 顶部栏 — 新拟态凸起 ========== */
+        .topbar {
+            position: fixed; top: 12px; left: 16px; right: 16px; height: 58px; border-radius: 28px;
+            display: flex; align-items: center; padding: 0 24px; z-index: 100;
+            background: #E8E8EC;
+            border: 1px solid #D1D1D6;
+            border-bottom-color: #C5C5CF;
+            border-right-color: #C5C5CF;
+            box-shadow: 6px 6px 12px #C5C5CF, -6px -6px 12px #FFFFFF, inset -1px -1px 2px rgba(255,255,255,0.8);
+            overflow: hidden;
+        }
+        body.dark .topbar {
+            background: #1E1E28;
+            border: 1px solid #2A2A38;
+            border-bottom-color: #13131A;
+            border-right-color: #13131A;
+            box-shadow: 6px 6px 12px #13131A, -6px -6px 12px #252530, inset -1px -1px 2px rgba(255,255,255,0.03);
+        }
+        .logo { display: flex; align-items: center; gap: 12px; font-weight: 700; font-size: 17px; color: #1C1C1E; }
+        body.dark .logo { color: #E8E8EC; }
+        .logo-icon {
+            width: 34px; height: 34px;
+            background: linear-gradient(135deg, var(--accent-pink), var(--accent-purple));
+            border-radius: 11px;
+            display: flex; align-items: center; justify-content: center;
+            box-shadow:
+                0 4px 14px rgba(168, 85, 247, 0.35),
+                inset 0 1px 1px rgba(255,255,255,0.4),
+                inset 0 -1px 1px rgba(0,0,0,0.1);
+            border: 1px solid rgba(255,255,255,0.25);
+        }
+        .app-version { font-size: 11px; font-weight: 500; color: rgba(0,0,0,0.35); margin-left: 6px; }
+        body.dark .app-version { color: rgba(255,255,255,0.35); }
+
         .nav { display: flex; gap: 8px; margin-left: auto; margin-right: auto; }
-        .nav-btn { padding: 10px 20px; border-radius: 20px; border: 1px solid rgba(255, 255, 255, 0.25); background: linear-gradient(135deg, rgba(255, 255, 255, 0.25) 0%, rgba(255, 255, 255, 0.1) 100%); backdrop-filter: blur(8px) saturate(150%); color: var(--text-secondary); font-size: 14px; font-weight: 500; cursor: pointer; transition: all 0.2s ease; }
-        .nav-btn:hover { background: linear-gradient(135deg, rgba(255, 255, 255, 0.4) 0%, rgba(255, 255, 255, 0.2) 100%); color: var(--text-primary); transform: translateY(-1px); }
-        .nav-btn.active { background: linear-gradient(135deg, rgba(255, 255, 255, 0.55) 0%, rgba(255, 255, 255, 0.3) 100%); color: var(--text-primary); border-color: rgba(255, 255, 255, 0.4); }
-        
-        body.dark .nav-btn { background: linear-gradient(135deg, rgba(60, 60, 65, 0.35) 0%, rgba(40, 40, 45, 0.18) 100%); border-color: rgba(255, 255, 255, 0.12); }
-        body.dark .nav-btn:hover { background: linear-gradient(135deg, rgba(70, 70, 75, 0.45) 0%, rgba(50, 50, 55, 0.25) 100%); }
-        body.dark .nav-btn.active { background: linear-gradient(135deg, rgba(80, 80, 85, 0.55) 0%, rgba(60, 60, 65, 0.3) 100%); border-color: rgba(255, 255, 255, 0.18); }
-        
-        .topbar-actions { display: flex; gap: 10px; }
-        body.dark .topbar { background: rgba(30, 30, 35, 0.85); border-bottom-color: rgba(255,255,255,0.12); }
-        .icon-btn { width: 40px; height: 40px; border-radius: 50%; border: 1.5px solid rgba(255, 255, 255, 0.4); border-bottom-color: rgba(255, 255, 255, 0.2); background: linear-gradient(135deg, rgba(255, 255, 255, 0.35) 0%, rgba(255, 255, 255, 0.15) 100%); backdrop-filter: blur(8px) saturate(150%); cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 18px; transition: all 0.2s ease; box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.5); }
-        .icon-btn:hover { background: linear-gradient(135deg, rgba(255, 255, 255, 0.5) 0%, rgba(255, 255, 255, 0.25) 100%); transform: scale(1.05); }
-        .icon-btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+        .nav-btn {
+            padding: 9px 20px; border-radius: 20px;
+            border: 1px solid #D1D1D6;
+            border-bottom-color: #C5C5CF;
+            background: #E8E8EC;
+            color: #6C6C7A; font-size: 14px; font-weight: 600; cursor: pointer;
+            transition: all 0.25s var(--ease-spring);
+            box-shadow: 3px 3px 6px #C5C5CF, -3px -3px 6px #FFFFFF;
+            position: relative; overflow: hidden;
+        }
+        .nav-btn:hover {
+            background: #F0F0F3;
+            color: #1C1C1E;
+            transform: translateY(-2px);
+            box-shadow: 5px 5px 10px #C5C5CF, -5px -5px 10px #FFFFFF;
+        }
+        .nav-btn.active {
+            background: #E8E8EC;
+            color: #1C1C1E;
+            border-color: #B8A8D8;
+            box-shadow: inset 2px 2px 4px #C5C5CF, inset -2px -2px 4px #FFFFFF;
+            transform: translateY(-1px);
+        }
+        .nav-btn:active { transform: translateY(0); }
+
+        body.dark .nav-btn {
+            background: #1E1E28;
+            border-color: #2A2A38;
+            color: #8A8A95;
+            box-shadow: 3px 3px 6px #13131A, -3px -3px 6px #252530;
+        }
+        body.dark .nav-btn:hover {
+            background: #252530;
+            color: #E8E8EC;
+            box-shadow: 5px 5px 10px #13131A, -5px -5px 10px #252530;
+        }
+        body.dark .nav-btn.active {
+            background: #1E1E28;
+            color: #E8E8EC;
+            border-color: #A090C0;
+            box-shadow: inset 2px 2px 4px #13131A, inset -2px -2px 4px #252530;
+        }
+
+        .topbar-actions { display: flex; gap: 10px; align-items: center; }
+        .icon-btn {
+            width: 40px; height: 40px; border-radius: 50%;
+            border: 1.5px solid #D1D1D6;
+            border-bottom-color: #C5C5CF;
+            background: #E8E8EC;
+            cursor: pointer;
+            display: flex; align-items: center; justify-content: center;
+            color: #6C6C7A;
+            transition: all 0.25s var(--ease-spring);
+            box-shadow: 3px 3px 6px #C5C5CF, -3px -3px 6px #FFFFFF;
+            position: relative;
+        }
+        .icon-btn:hover {
+            background: #F0F0F3;
+            color: #1C1C1E;
+            transform: translateY(-2px) scale(1.06);
+            box-shadow: 5px 5px 10px #C5C5CF, -5px -5px 10px #FFFFFF;
+        }
+        .icon-btn:active { transform: translateY(0) scale(0.98); }
+        .icon-btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; box-shadow: none; }
         .icon-btn.loading { pointer-events: none; }
         .icon-btn .loading-spinner { width: 18px; height: 18px; border-width: 2px; }
         .icon-btn.syncing { animation: btn-pulse 1.2s ease-in-out infinite; }
         .icon-btn.syncing::after { content: ''; position: absolute; inset: -2px; border-radius: 50%; border: 2px solid transparent; border-top-color: #7c3aed; animation: spin-ring 1s linear infinite; }
         @keyframes btn-pulse { 0%,100% { opacity: 0.7; } 50% { opacity: 1; } }
         @keyframes spin-ring { to { transform: rotate(360deg); } }
-        
-        body.dark .icon-btn { border-color: rgba(255, 255, 255, 0.15); border-bottom-color: rgba(255, 255, 255, 0.08); background: linear-gradient(135deg, rgba(65, 65, 70, 0.4) 0%, rgba(45, 45, 50, 0.22) 100%); box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.1); }
-        body.dark .icon-btn:hover { background: linear-gradient(135deg, rgba(75, 75, 80, 0.5) 0%, rgba(55, 55, 60, 0.28) 100%); }
+
+        body.dark .icon-btn {
+            border-color: #2A2A38;
+            border-bottom-color: #13131A;
+            background: #1E1E28;
+            color: #8A8A95;
+            box-shadow: 3px 3px 6px #13131A, -3px -3px 6px #252530;
+        }
+        body.dark .icon-btn:hover {
+            background: #252530;
+            color: #E8E8EC;
+            box-shadow: 5px 5px 10px #13131A, -5px -5px 10px #252530;
+        }
         
         /* ========== 主内容 ========== */
         .main { padding: 96px 24px 24px; max-width: 1400px; margin: 0 auto; }
@@ -162,26 +294,37 @@
         
         /* ========== 启动页 ========== */
         /* ========== 登录页 - 独立全屏 ========== */
-        .login-container { position: fixed; top: 0; left: 0; right: 0; bottom: 0; display: flex; align-items: center; justify-content: center; z-index: 1000; background: inherit; padding: 20px; }
-        .login-card { width: 400px; max-width: 100%; border-radius: 28px; padding: 36px 32px; text-align: center; transition: transform 0.3s ease, box-shadow 0.3s ease; background: linear-gradient(135deg, rgba(255, 255, 255, 0.5) 0%, rgba(255, 255, 255, 0.25) 100%); backdrop-filter: blur(60px) saturate(220%) brightness(1.12); -webkit-backdrop-filter: blur(60px) saturate(220%) brightness(1.12); border: 1.5px solid rgba(255, 255, 255, 0.7); border-bottom-color: rgba(255, 255, 255, 0.35); border-right-color: rgba(255, 255, 255, 0.4); box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15), 0 8px 20px rgba(0, 0, 0, 0.08), inset 0 2px 1px rgba(255, 255, 255, 0.9), inset 0 -1px 1px rgba(255, 255, 255, 0.25); }
-        .login-card:hover { transform: translateY(-2px); box-shadow: 0 30px 80px rgba(0, 0, 0, 0.2), 0 12px 30px rgba(0, 0, 0, 0.12), inset 0 2px 1px rgba(255, 255, 255, 0.95), inset 0 -1px 1px rgba(255, 255, 255, 0.3); }
-        .login-logo { width: 56px; height: 56px; background: linear-gradient(135deg, var(--accent-pink), var(--accent-purple)); border-radius: 18px; margin: 0 auto 16px; display: flex; align-items: center; justify-content: center; font-size: 28px; box-shadow: 0 6px 24px rgba(168, 85, 247, 0.4); }
-        .login-title { font-size: 24px; font-weight: 700; margin-bottom: 4px; }
-        .login-subtitle { color: var(--text-secondary); margin-bottom: 24px; font-size: 13px; }
+        .login-container { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; display: flex; align-items: center; justify-content: center; z-index: 1000; background: inherit; padding: 20px; box-sizing: border-box; }
+        .login-card {
+            width: 400px; max-width: 100%; border-radius: 28px; padding: 36px 32px;
+            text-align: center; transition: all 0.4s var(--ease-smooth);
+            background: #E8E8EC;
+            border: 2px solid #D1D1D6;
+            border-bottom-color: #C5C5CF;
+            border-right-color: #C5C5CF;
+            box-shadow: 10px 10px 20px #C5C5CF, -10px -10px 20px #FFFFFF, inset -1px -1px 2px rgba(255,255,255,0.8);
+            position: relative; overflow: hidden;
+        }
+        .login-card:hover { transform: translateY(-2px); box-shadow: 12px 12px 24px #C5C5CF, -12px -12px 24px #FFFFFF, inset -1px -1px 2px rgba(255,255,255,0.9); }
+        .login-logo { width: 56px; height: 56px; background: linear-gradient(135deg, var(--accent-pink), var(--accent-purple)); border-radius: 18px; margin: 0 auto 16px; display: flex; align-items: center; justify-content: center; font-size: 28px; box-shadow: 0 6px 24px rgba(168, 85, 247, 0.4); position: relative; z-index: 1; }
+        .login-title { font-size: 24px; font-weight: 800; margin-bottom: 4px; color: #1C1C1E; position: relative; z-index: 1; }
+        body.dark .login-title { color: #E8E8EC; }
+        .login-subtitle { color: #6C6C7A; margin-bottom: 24px; font-size: 13px; font-weight: 500; position: relative; z-index: 1; }
+        body.dark .login-subtitle { color: #8A8A95; }
+        body.dark .login-card { background: #1E1E28; border: 2px solid #2A2A38; border-bottom-color: #13131A; border-right-color: #13131A; box-shadow: 10px 10px 20px #13131A, -10px -10px 20px #252530, inset -1px -1px 2px rgba(255,255,255,0.03); }
         .login-form { text-align: left; margin-bottom: 20px; }
         .login-form .form-group { margin-bottom: 16px; }
         .login-form .form-label { display: block; font-size: 12px; font-weight: 600; margin-bottom: 6px; color: var(--text-secondary); }
-        .login-form .form-input { width: 100%; height: 44px; padding: 0 14px; border-radius: 12px; border: 1.5px solid rgba(255,255,255,0.5); border-bottom-color: rgba(255,255,255,0.25); background: linear-gradient(135deg, rgba(255,255,255,0.7) 0%, rgba(255,255,255,0.4) 100%); backdrop-filter: blur(10px); font-size: 14px; color: var(--text-primary); outline: none; transition: all 0.2s ease; box-shadow: inset 0 1px 1px rgba(255,255,255,0.8); }
         .login-form .form-input:focus { border-color: var(--accent-purple); box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.15), inset 0 1px 1px rgba(255,255,255,0.9); }
-        .login-form .form-input::placeholder { color: rgba(0,0,0,0.35); }
-        body.dark .login-form .form-input { background: linear-gradient(135deg, rgba(60, 60, 65, 0.6) 0%, rgba(40, 40, 45, 0.35) 100%); border-color: rgba(255, 255, 255, 0.15); color: white; }
-        body.dark .login-form .form-input::placeholder { color: rgba(255,255,255,0.4); }
+        .login-form .form-input::placeholder { color: #9A9AA5; }
+        body.dark .login-form .form-input { background: #252530; border-color: #2A2A38; color: #E8E8EC; box-shadow: inset 2px 2px 4px #13131A, inset -2px -2px 4px #252530; }
+        body.dark .login-form .form-input::placeholder { color: #6C6C7A; }
         .login-form #projectLoginSelect { width: 100%; }
         .login-form #projectLoginSelect .custom-select-trigger { width: 100%; height: 44px; }
         .btn-login { width: 100%; height: 46px; margin-top: 4px; font-size: 15px; }
         .btn-offline { width: 100%; height: 40px; }
         .login-divider { position: relative; text-align: center; margin: 16px 0; }
-        .login-divider::before { content: ''; position: absolute; top: 50%; left: 0; right: 0; height: 1px; background: rgba(0,0,0,0.1); }
+        .login-divider::before { content: ''; position: absolute; top: 50%; left: 0; right: 0; height: 1px; background: #D1D1D6; }
         .login-divider span { position: relative; background: transparent; padding: 0 12px; font-size: 12px; color: var(--text-secondary); }
         .login-footer { text-align: center; font-size: 11px; color: var(--text-secondary); line-height: 1.6; }
         
@@ -201,10 +344,14 @@
         .btn-primary { background: linear-gradient(135deg, var(--accent-purple) 0%, var(--accent-pink) 100%); color: white; box-shadow: 0 4px 15px rgba(139, 92, 246, 0.4), inset 0 1px 1px rgba(255,255,255,0.3); }
         .btn-primary:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(139, 92, 246, 0.5), inset 0 1px 1px rgba(255,255,255,0.4); }
         .btn-primary:active:not(:disabled) { transform: translateY(0); }
-        .btn-secondary { background: linear-gradient(135deg, rgba(255,255,255,0.7) 0%, rgba(255,255,255,0.4) 100%); color: var(--text-primary); border: 1.5px solid rgba(255,255,255,0.5); backdrop-filter: blur(8px); }
-        .btn-secondary:hover:not(:disabled) { background: linear-gradient(135deg, rgba(255,255,255,0.85) 0%, rgba(255,255,255,0.55) 100%); transform: translateY(-2px); }
-        .btn-ghost { background: transparent; color: var(--text-secondary); border: 1px solid rgba(255,255,255,0.3); }
-        .btn-ghost:hover:not(:disabled) { background: rgba(255,255,255,0.1); color: var(--text-primary); }
+        .btn-secondary { background: #F0F0F3; color: var(--text-primary); border: 1.5px solid #D1D1D6; box-shadow: -3px -3px 6px #FFFFFF, 3px 3px 6px #C5C5CF; }
+        body.dark .btn-secondary { background: #1E1E28; border-color: #2A2A38; box-shadow: -3px -3px 6px #252530, 3px 3px 6px #13131A; }
+        .btn-secondary:hover:not(:disabled) { background: #F5F5F8; transform: translateY(-2px); box-shadow: -4px -4px 8px #FFFFFF, 4px 4px 8px #C5C5CF; }
+        body.dark .btn-secondary:hover:not(:disabled) { background: #252530; box-shadow: -4px -4px 8px #252530, 4px 4px 8px #13131A; }
+        .btn-ghost { background: transparent; color: var(--text-secondary); border: 1px solid #D1D1D6; }
+        body.dark .btn-ghost { border-color: rgba(255,255,255,0.15); }
+        .btn-ghost:hover:not(:disabled) { background: rgba(0,0,0,0.04); color: var(--text-primary); }
+        body.dark .btn-ghost:hover:not(:disabled) { background: rgba(255,255,255,0.06); }
         .btn-danger { background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); color: white; }
         .btn-danger:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 4px 15px rgba(239, 68, 68, 0.4); }
         .btn-sm { padding: 8px 16px; font-size: 13px; border-radius: 20px; }
@@ -213,14 +360,15 @@
         /* ========== 卡片 ========== */
         .card { border-radius: 24px; overflow: visible; transition: transform 0.3s ease, box-shadow 0.3s ease; }
         .card:hover { transform: translateY(-2px); }
-        .card-header { padding: 20px 24px; border-bottom: 1px solid rgba(255,255,255,0.15); display: flex; justify-content: space-between; align-items: center; }
+        .card-header { padding: 20px 24px; border-bottom: 1px solid rgba(0,0,0,0.08); display: flex; justify-content: space-between; align-items: center; }
+        body.dark .card-header { border-bottom-color: rgba(255,255,255,0.08); }
         .card-title { font-size: 16px; font-weight: 600; }
         .card-body { padding: 24px; }
         .card-actions { display: flex; gap: 8px; }
         
         /* ========== KPI卡片 ========== */
         .kpi-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; margin-bottom: 24px; }
-        .kpi-card { border-radius: 24px; padding: 24px; cursor: pointer; transition: all 0.3s ease; position: relative; }
+        .kpi-card { border-radius: 24px; padding: 24px; cursor: pointer; transition: all 0.35s var(--ease-smooth); position: relative; overflow: hidden; }
         .kpi-card:hover { transform: translateY(-4px) scale(1.02); }
         .kpi-card.active { ring: 2px solid var(--accent-purple); }
         .kpi-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 16px; }
@@ -236,7 +384,7 @@
         
         /* ========== 图表区 ========== */
         .chart-grid { display: grid; grid-template-columns: 2fr 1fr; gap: 20px; margin-bottom: 24px; }
-        .chart-card { border-radius: 24px; padding: 24px; }
+        .chart-card { border-radius: 24px; padding: 24px; position: relative; overflow: hidden; }
         .chart-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
         .chart-title { font-size: 16px; font-weight: 600; }
         .chart-container { height: 260px; }
@@ -261,8 +409,8 @@
         .stat-pct-tag.green { color: var(--accent-green); }
         .stat-pct-tag.blue { color: var(--accent-blue); }
         .stat-pct-tag.purple { color: var(--accent-purple); }
-        .stat-count-badge { display:inline-block;margin-left:4px;padding:1px 7px;border-radius:10px;font-size:11px;font-weight:600;background:rgba(139,92,246,0.12);color:var(--accent-purple);vertical-align:middle;line-height:1.5; }
-        .stat-progress { height:4px;border-radius:2px;background:rgba(0,0,0,0.06);margin-top:8px;overflow:hidden; }
+        .stat-count-badge { display:inline-block;margin-left:4px;padding:1px 7px;border-radius:10px;font-size:11px;font-weight:600;background:#DDD8E8;color:#6B5B95;vertical-align:middle;line-height:1.5; }
+        .stat-progress { height:5px;border-radius:3px;background:#D1D1D6;margin-top:8px;overflow:hidden; box-shadow: inset 2px 2px 4px #C5C5CF, inset -2px -2px 4px #FFFFFF; }
         .stat-progress-bar { height:100%;border-radius:2px;transition:width 0.6s ease;width:0%; }
         .stat-progress-bar.red { background: linear-gradient(90deg, #ef4444, #f87171); }
         .stat-progress-bar.orange { background: linear-gradient(90deg, #f97316, #fb923c); }
@@ -279,31 +427,30 @@
             font-weight: 500;
             cursor: pointer;
             transition: all 0.2s ease;
-            backdrop-filter: blur(12px);
             outline: none;
         }
         .action-btn-edit {
-            background: linear-gradient(135deg, rgba(139,92,246,0.18), rgba(139,92,246,0.08));
-            color: #a78bfa;
-            border-color: rgba(139,92,246,0.25);
-            box-shadow: 0 2px 8px rgba(139,92,246,0.1), inset 0 1px 0 rgba(255,255,255,0.1);
+            background: #E8E8EC;
+            color: #7B5FBF;
+            border-color: #7B5FBF;
+            box-shadow: 2px 2px 4px #C5C5CF, -2px -2px 4px #FFFFFF;
         }
         .action-btn-edit:hover {
-            background: linear-gradient(135deg, rgba(139,92,246,0.3), rgba(139,92,246,0.18));
-            color: #c4b5fd;
-            box-shadow: 0 4px 14px rgba(139,92,246,0.25), inset 0 1px 0 rgba(255,255,255,0.15);
+            background: #F0F0F3;
+            color: #5A3FA0;
+            box-shadow: 3px 3px 6px #C5C5CF, -3px -3px 6px #FFFFFF;
             transform: translateY(-1px);
         }
         .action-btn-del {
-            background: linear-gradient(135deg, rgba(239,68,68,0.14), rgba(239,68,68,0.06));
-            color: #f87171;
-            border-color: rgba(239,68,68,0.2);
-            box-shadow: 0 2px 8px rgba(239,68,68,0.08), inset 0 1px 0 rgba(255,255,255,0.08);
+            background: #E8E8EC;
+            color: #DC2626;
+            border-color: #DC2626;
+            box-shadow: 2px 2px 4px #C5C5CF, -2px -2px 4px #FFFFFF;
         }
         .action-btn-del:hover {
-            background: linear-gradient(135deg, rgba(239,68,68,0.25), rgba(239,68,68,0.14));
-            color: #fca5a5;
-            box-shadow: 0 4px 14px rgba(239,68,68,0.22), inset 0 1px 0 rgba(255,255,255,0.12);
+            background: #F0F0F3;
+            color: #B91C1C;
+            box-shadow: 3px 3px 6px #C5C5CF, -3px -3px 6px #FFFFFF;
             transform: translateY(-1px);
         }
         
@@ -311,85 +458,137 @@
         .multi-select-wrap { position: relative; }
         .multi-select-trigger {
             height: 52px; padding: 0 48px 0 24px; border-radius: 26px;
-            border: 1.5px solid rgba(255, 255, 255, 0.5); border-bottom-color: rgba(255, 255, 255, 0.25);
-            background: linear-gradient(135deg, rgba(255, 255, 255, 0.7) 0%, rgba(255, 255, 255, 0.4) 100%);
-            backdrop-filter: blur(10px) saturate(150%); font-size: 15px; color: var(--text-primary);
+            border: 1.5px solid #D1D1D6; border-bottom-color: #C5C5CF;
+            background: #E8E8EC;
+            font-size: 15px; color: var(--text-primary);
             cursor: pointer; display: flex; align-items: center;
-            transition: all 0.2s ease; box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.8);
+            transition: all 0.2s ease;
+            box-shadow: inset 0 1px 0 rgba(255,255,255,0.6), 4px 4px 8px #C5C5CF, -4px -4px 8px #FFFFFF;
             user-select: none; position: relative; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
         }
-        .multi-select-trigger:hover { background: linear-gradient(135deg, rgba(255, 255, 255, 0.85) 0%, rgba(255, 255, 255, 0.55) 100%); border-color: rgba(139, 92, 246, 0.4); }
-        .multi-select-trigger.active { background: linear-gradient(135deg, rgba(255, 255, 255, 0.9) 0%, rgba(255, 255, 255, 0.65) 100%); border-color: var(--accent-purple); }
+        .multi-select-trigger:hover { background: #ECECF0; border-color: var(--accent-purple); box-shadow: inset 0 1px 0 rgba(255,255,255,0.7), 6px 6px 12px #C5C5CF, -6px -6px 12px #FFFFFF; }
+        .multi-select-trigger.active { background: #ECECF0; border-color: var(--accent-purple); border-bottom-color: #B8A8D8; box-shadow: inset 2px 2px 4px #C5C5CF, inset -2px -2px 4px #FFFFFF, 0 4px 16px rgba(139,92,246,0.12); }
         .multi-select-trigger-text { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
         .multi-select-arrow { position: absolute; right: 20px; top: 50%; transform: translateY(-50%); width: 12px; height: 8px; transition: transform 0.3s ease; pointer-events: none; }
         .multi-select-trigger.active .multi-select-arrow { transform: translateY(-50%) rotate(180deg); }
         .multi-select-panel {
-            position: fixed; width: 280px; z-index: 99999;
-            background: linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(255, 255, 255, 0.75) 100%);
-            backdrop-filter: blur(30px) saturate(180%); border: 1.5px solid rgba(255, 255, 255, 0.6);
-            border-bottom-color: rgba(255, 255, 255, 0.3); border-radius: 20px;
-            padding: 10px; box-shadow: 0 20px 50px rgba(0, 0, 0, 0.15), inset 0 1px 1px rgba(255, 255, 255, 0.9);
-            z-index: 9999; opacity: 0; visibility: hidden; transform: translateY(-10px) scale(0.98);
-            transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1); max-height: 320px; overflow-y: auto;
+            position: fixed; width: 280px;
+            background: #F0F0F3;
+            border: 1px solid #D1D1D6;
+            border-bottom-color: #C5C5CF;
+            border-radius: 22px;
+            padding: 12px;
+            box-shadow: 8px 8px 16px #C5C5CF, -8px -8px 16px #FFFFFF;
+            z-index: 9999; opacity: 0; visibility: hidden;
+            transform: translateY(-10px) scale(0.96);
+            transition: all 0.3s var(--ease-out-expo);
+            max-height: 320px; overflow-y: auto;
         }
         .multi-select-panel.show { display: flex; flex-direction: column; opacity: 1; visibility: visible; transform: translateY(0) scale(1); }
         .multi-select-item { padding: 10px 14px; border-radius: 12px; cursor: pointer; font-size: 14px; font-weight: 500;
             color: var(--text-primary); transition: all 0.2s ease; display: flex; align-items: center; gap: 10px;
             user-select: none; }
-        .multi-select-item:hover { background: linear-gradient(135deg, rgba(139, 92, 246, 0.12) 0%, rgba(59, 130, 246, 0.08) 100%); }
-        .multi-select-item.selected { background: linear-gradient(135deg, rgba(139, 92, 246, 0.18) 0%, rgba(168, 85, 247, 0.12) 100%); color: var(--accent-purple); font-weight: 600; }
-        .multi-select-item.selected::before { content: '✓'; font-size: 12px; font-weight: 700; width: 14px; flex-shrink: 0; }
-        .multi-select-footer { padding: 8px 10px 4px; border-top: 1px solid rgba(255,255,255,0.4); margin-top: 4px; display: flex; gap: 8px; }
+        .multi-select-item:hover { background: #E6E0F0; }
+        .multi-select-item.selected { background: #DDD8E8; color: var(--accent-purple); font-weight: 600; }
+        .multi-select-item.selected::before { content: ''; display: inline-block; width: 10px; height: 6px; border-left: 2px solid currentColor; border-bottom: 2px solid currentColor; transform: rotate(-45deg); margin-right: 4px; vertical-align: 2px; }
+        .multi-select-footer { padding: 8px 10px 4px; border-top: 1px solid #D1D1D6; margin-top: 4px; display: flex; gap: 8px; }
         .multi-select-footer-btn { flex: 1; padding: 7px; border-radius: 10px; border: none; font-size: 12px; font-weight: 600; cursor: pointer; transition: all 0.2s; }
-        .multi-select-confirm { background: var(--accent-purple); color: white; }
-        .multi-select-confirm:hover { background: #7c3aed; }
-        .multi-select-clear { background: rgba(239,68,68,0.1); color: #ef4444; }
-        .multi-select-clear:hover { background: rgba(239,68,68,0.2); }
-        body.dark .multi-select-trigger { background: linear-gradient(135deg, rgba(60, 60, 65, 0.6) 0%, rgba(40, 40, 45, 0.35) 100%); border-color: rgba(255, 255, 255, 0.15); color: white; }
-        body.dark .multi-select-panel { background: linear-gradient(135deg, rgba(50, 50, 55, 0.97) 0%, rgba(35, 35, 40, 0.9) 100%); border-color: rgba(255, 255, 255, 0.12); }
-        body.dark .multi-select-item { color: rgba(255, 255, 255, 0.9); }
+        .multi-select-confirm { background: var(--accent-purple); color: white; border: 1px solid #7B5FBF; }
+        .multi-select-confirm:hover { background: #6A4FA8; }
+        .multi-select-clear { background: #F0E0E0; color: #D64545; border: 1px solid #E0C0C0; }
+        .multi-select-clear:hover { background: #E8D0D0; }
+        body.dark .multi-select-trigger { background: #1E1E28; border-color: #2A2A38; border-bottom-color: #13131A; color: #E8E8EC; box-shadow: inset 0 1px 0 rgba(255,255,255,0.04), 4px 4px 8px #13131A, -4px -4px 8px #252530; }
+        body.dark .multi-select-panel { background: #252530; border-color: #2A2A38; box-shadow: 8px 8px 16px #13131A, -8px -8px 16px #252530; }
+        body.dark .multi-select-item { color: #E8E8EC; }
         body.dark .multi-select-item.selected { color: #a78bfa; }
 
-        body.dark .multi-select-clear { background: rgba(239,68,68,0.15); color: #f87171; }
-        body.dark .multi-select-clear:hover { background: rgba(239,68,68,0.25); }
+        body.dark .multi-select-clear { background: #3A2020; color: #f87171; border-color: #4A3030; }
+        body.dark .multi-select-clear:hover { background: #4A2828; }
 
         /* ========== 搜索栏 ========== */
         .search-bar { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
         .search-bar .search-input-wrap { min-width: 160px; }
         .search-input-wrap { position: relative; flex: 1; }
-        .input { width: 100%; height: 52px; padding: 0 20px; border-radius: 26px; border: 1.5px solid rgba(255,255,255,0.5); border-bottom-color: rgba(255,255,255,0.25); background: linear-gradient(135deg, rgba(255,255,255,0.7) 0%, rgba(255,255,255,0.4) 100%); backdrop-filter: blur(10px); font-size: 15px; color: var(--text-primary); outline: none; transition: all 0.2s ease; box-shadow: inset 0 1px 1px rgba(255,255,255,0.8); }
-        .input:focus { border-color: var(--accent-purple); box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.15), inset 0 1px 1px rgba(255,255,255,0.9); }
-        .input::placeholder { color: rgba(0,0,0,0.35); }
-        body.dark .input { background: linear-gradient(135deg, rgba(60, 60, 65, 0.6) 0%, rgba(40, 40, 45, 0.35) 100%); border-color: rgba(255, 255, 255, 0.15); color: white; }
-        body.dark .input::placeholder { color: rgba(255,255,255,0.4); }
+        .input {
+            width: 100%; height: 52px; padding: 0 20px; border-radius: 26px;
+            border: 1.2px solid #D1D1D6;
+            background: #E8E8EC;
+            font-size: 15px; color: var(--text-primary); outline: none;
+            transition: all 0.25s var(--ease-smooth);
+            box-shadow: inset 3px 3px 6px #C5C5CF, inset -3px -3px 6px #FFFFFF;
+        }
+        .input:focus {
+            border-color: var(--accent-purple);
+            transform: translateY(-1px);
+            box-shadow: inset 2px 2px 4px #C5C5CF, inset -2px -2px 4px #FFFFFF, 0 4px 16px rgba(139,92,246,0.12), 0 0 0 3px rgba(139,92,246,0.1);
+        }
+        .input::placeholder { color: #9A9AA5; }
+        body.dark .input { background: #1E1E28; border-color: #2A2A38; color: #E8E8EC; box-shadow: inset 3px 3px 6px #13131A, inset -3px -3px 6px #252530; }
+        body.dark .input::placeholder { color: #6C6C7A; }
         
         /* ========== 自定义下拉菜单 ========== */
         .custom-select { position: relative; }
-        .custom-select-trigger { height: 52px; padding: 0 48px 0 24px; border-radius: 26px; border: 1.5px solid rgba(255, 255, 255, 0.5); border-bottom-color: rgba(255, 255, 255, 0.25); background: linear-gradient(135deg, rgba(255, 255, 255, 0.7) 0%, rgba(255, 255, 255, 0.4) 100%); backdrop-filter: blur(10px) saturate(150%); font-size: 15px; color: var(--text-primary); cursor: pointer; display: flex; align-items: center; transition: all 0.2s ease; box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.8); user-select: none; position: relative; }
-        .custom-select-trigger:hover { background: linear-gradient(135deg, rgba(255, 255, 255, 0.85) 0%, rgba(255, 255, 255, 0.55) 100%); border-color: rgba(139, 92, 246, 0.4); }
+        .custom-select-trigger {
+            height: 52px; padding: 0 48px 0 24px; border-radius: 26px;
+            border: 1.5px solid #D1D1D6; border-bottom-color: #C5C5CF;
+            background: #E8E8EC;
+            font-size: 15px; color: var(--text-primary);
+            cursor: pointer; display: flex; align-items: center;
+            transition: all 0.2s ease;
+            box-shadow: inset 0 1px 0 rgba(255,255,255,0.6), 4px 4px 8px #C5C5CF, -4px -4px 8px #FFFFFF;
+            user-select: none; position: relative; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+        }
+        .custom-select-trigger:hover { background: #ECECF0; border-color: var(--accent-purple); box-shadow: inset 0 1px 0 rgba(255,255,255,0.7), 6px 6px 12px #C5C5CF, -6px -6px 12px #FFFFFF; }
+        .custom-select-trigger.active { background: #ECECF0; border-color: var(--accent-purple); border-bottom-color: #B8A8D8; box-shadow: inset 2px 2px 4px #C5C5CF, inset -2px -2px 4px #FFFFFF, 0 4px 16px rgba(139,92,246,0.12); }
         .custom-select-trigger.active { background: linear-gradient(135deg, rgba(255, 255, 255, 0.9) 0%, rgba(255, 255, 255, 0.65) 100%); border-color: var(--accent-purple); border-bottom-color: rgba(168, 85, 247, 0.5); }
         .custom-select-arrow { position: absolute; right: 20px; top: 50%; transform: translateY(-50%); width: 12px; height: 8px; transition: transform 0.3s ease; pointer-events: none; }
         .custom-select-arrow svg { width: 100%; height: 100%; }
         .custom-select-trigger.active .custom-select-arrow { transform: translateY(-50%) rotate(180deg); }
-        .custom-select-options { position: fixed; background: linear-gradient(135deg, rgba(255, 255, 255, 0.9) 0%, rgba(255, 255, 255, 0.7) 100%); backdrop-filter: blur(30px) saturate(180%); border: 1.5px solid rgba(255, 255, 255, 0.6); border-bottom-color: rgba(255, 255, 255, 0.3); border-radius: 20px; padding: 10px; box-shadow: 0 20px 50px rgba(0, 0, 0, 0.15), inset 0 1px 1px rgba(255, 255, 255, 0.9); z-index: 1000; opacity: 0; visibility: hidden; transform: translateY(-10px) scale(0.98); transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1); max-height: 300px; overflow-y: auto; }
+        .custom-select-options {
+            position: fixed;
+            background: #F0F0F3;
+            border: 1px solid #D1D1D6;
+            border-bottom-color: #C5C5CF;
+            border-radius: 22px;
+            padding: 12px;
+            box-shadow: 8px 8px 16px #C5C5CF, -8px -8px 16px #FFFFFF;
+            z-index: 1000;
+            opacity: 0; visibility: hidden;
+            transform: translateY(-10px) scale(0.96);
+            transition: all 0.3s var(--ease-out-expo);
+            max-height: 300px; overflow-y: auto;
+        }
         .custom-select-options.show { opacity: 1; visibility: visible; transform: translateY(0) scale(1); }
         .custom-select-option { padding: 12px 16px; border-radius: 12px; cursor: pointer; font-size: 14px; font-weight: 500; color: var(--text-primary); transition: all 0.2s ease; display: flex; align-items: center; gap: 10px; }
-        .custom-select-option:hover { background: linear-gradient(135deg, rgba(139, 92, 246, 0.15) 0%, rgba(59, 130, 246, 0.1) 100%); }
-        .custom-select-option.selected { background: linear-gradient(135deg, rgba(139, 92, 246, 0.2) 0%, rgba(168, 85, 247, 0.15) 100%); color: var(--accent-purple); font-weight: 600; }
-        .custom-select-option.selected::before { content: '✓'; font-size: 12px; font-weight: 700; }
-        body.dark .custom-select-trigger { background: linear-gradient(135deg, rgba(60, 60, 65, 0.6) 0%, rgba(40, 40, 45, 0.35) 100%); border-color: rgba(255, 255, 255, 0.15); color: white; }
-        body.dark .custom-select-options { background: linear-gradient(135deg, rgba(50, 50, 55, 0.95) 0%, rgba(35, 35, 40, 0.85) 100%); border-color: rgba(255, 255, 255, 0.15); }
-        body.dark .custom-select-option { color: rgba(255, 255, 255, 0.9); }
+        .custom-select-option:hover { background: #E6E0F0; }
+        .custom-select-option.selected { background: #DDD8E8; color: var(--accent-purple); font-weight: 600; }
+        .custom-select-option.selected::before { content: ''; display: inline-block; width: 10px; height: 6px; border-left: 2px solid currentColor; border-bottom: 2px solid currentColor; transform: rotate(-45deg); margin-right: 6px; vertical-align: 2px; }
+        body.dark .custom-select-trigger { background: #1E1E28; border-color: #2A2A38; border-bottom-color: #13131A; color: #E8E8EC; box-shadow: inset 0 1px 0 rgba(255,255,255,0.04), 4px 4px 8px #13131A, -4px -4px 8px #252530; }
+        body.dark .custom-select-options { background: #252530; border-color: #2A2A38; box-shadow: 8px 8px 16px #13131A, -8px -8px 16px #252530; }
+        body.dark .custom-select-option { color: #E8E8EC; }
         body.dark .custom-select-option.selected { color: #a78bfa; }
         
         /* ========== 表格 ========== */
         .table-wrap { overflow-x: auto; border-radius: 16px; }
-        table { width: 100%; border-collapse: collapse; font-size: 14px; }
+        table { width: 100%; border-collapse: separate; border-spacing: 0; font-size: 14px; }
         th, td { padding: 14px 16px; text-align: left; }
-        th { font-weight: 600; color: var(--text-secondary); font-size: 13px; text-transform: uppercase; letter-spacing: 0.5px; background: rgba(0,0,0,0.02); }
-        tbody tr { border-bottom: 1px solid rgba(255,255,255,0.1); transition: background 0.2s ease; }
-        tbody tr:hover { background: rgba(139, 92, 246, 0.05); }
+        th {
+            font-weight: 600; color: var(--text-secondary); font-size: 13px;
+            text-transform: uppercase; letter-spacing: 0.5px;
+            background: rgba(0,0,0,0.02);
+            position: sticky; top: 0;
+            z-index: 5;
+            border-bottom: 1px solid rgba(255,255,255,0.15);
+        }
+        tbody tr {
+            border-bottom: 1px solid rgba(255,255,255,0.08);
+            transition: all 0.2s ease;
+        }
+        tbody tr:nth-child(even) { background: rgba(255,255,255,0.02); }
+        tbody tr:hover { background: rgba(139, 92, 246, 0.06); transform: scale(1.001); }
         tbody tr:last-child { border-bottom: none; }
+        tbody tr:last-child td:first-child { border-bottom-left-radius: 16px; }
+        tbody tr:last-child td:last-child { border-bottom-right-radius: 16px; }
         .sortable { cursor: pointer; user-select: none; white-space: nowrap; }
         .sortable:hover { color: var(--accent-purple); }
         .sort-icon { font-size: 12px; opacity: 0.5; transition: all 0.2s ease; margin-left: 4px; }
@@ -409,18 +608,32 @@
         .fishbone-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
         .fishbone-title { font-size: 15px; font-weight: 600; display: flex; align-items: center; gap: 10px; }
         .fishbone-toggle { width: 32px; height: 32px; border-radius: 50%; border: 1px solid rgba(255,255,255,0.3); background: rgba(255,255,255,0.2); cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.2s ease; font-size: 12px; }
-        .fishbone-toggle:hover { background: rgba(255,255,255,0.3); transform: scale(1.1); }
+        .fishbone-toggle:hover { background: #F5F5F8; transform: scale(1.1); }
+        body.dark .fishbone-toggle:hover { background: #2A2A38; }
         .fishbone-toggle.collapsed { transform: rotate(-90deg); }
         .flow-details { display: grid; grid-template-columns: repeat(6, 1fr); gap: 12px; transition: all 0.3s ease; }
         .flow-details.collapsed { display: none; }
-        .flow-step-card { border-radius: 16px; padding: 14px; background: linear-gradient(135deg, rgba(255,255,255,0.5) 0%, rgba(255,255,255,0.2) 100%); border: 1.5px solid rgba(255,255,255,0.4); position: relative; transition: all 0.3s ease; cursor: pointer; }
-        .flow-step-card:hover { transform: translateY(-3px); box-shadow: 0 8px 20px rgba(0,0,0,0.1); }
+        .flow-step-card {
+            border-radius: 18px; padding: 14px;
+            background: #E8E8EC;
+            border: 1px solid #D1D1D6;
+            border-bottom-color: #C5C5CF;
+            border-right-color: #C5C5CF;
+            position: relative;
+            transition: all 0.3s var(--ease-smooth);
+            cursor: pointer;
+            overflow: hidden;
+            box-shadow: 4px 4px 8px #C5C5CF, -4px -4px 8px #FFFFFF, inset -1px -1px 2px rgba(255,255,255,0.8);
+        }
+        .flow-step-card:hover { transform: translateY(-3px); box-shadow: 6px 6px 12px #C5C5CF, -6px -6px 12px #FFFFFF, inset -1px -1px 2px rgba(255,255,255,0.9); }
         .flow-step-card.done { border-left: 3px solid var(--accent-green); }
-        .flow-step-card.final { border-left: 3px solid var(--accent-purple); background: linear-gradient(135deg, rgba(139,92,246,0.15) 0%, rgba(236,72,153,0.1) 100%); }
+        .flow-step-card.final { border-left: 3px solid var(--accent-purple); background: #E8E8EC; }
+        body.dark .flow-step-card.final { background: #1E1E28; }
         .flow-step-status { position: absolute; top: 8px; right: 8px; width: 8px; height: 8px; border-radius: 50%; background: var(--accent-green); }
         .flow-step-card.final .flow-step-status { background: var(--accent-purple); animation: pulse 2s infinite; }
         .flow-step-header { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
-        .flow-step-icon { width: 36px; height: 36px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 16px; background: rgba(255,255,255,0.5); }
+        .flow-step-icon { width: 36px; height: 36px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 16px; background: #FFFFFF; box-shadow: -2px -2px 4px #FFFFFF, 2px 2px 4px #C5C5CF; }
+        body.dark .flow-step-icon { background: #252530; box-shadow: -2px -2px 4px #252530, 2px 2px 4px #13131A; }
         .flow-step-info { flex: 1; }
         .flow-step-title { font-size: 14px; font-weight: 600; }
         .flow-step-time { font-size: 11px; color: var(--text-secondary); margin-top: 2px; }
@@ -432,9 +645,19 @@
         @media (max-width: 480px) { .flow-details { grid-template-columns: 1fr; } .stats-grid { grid-template-columns: 1fr; } .splash-card { width: calc(100% - 32px); padding: 40px 24px; } }
         
         /* ========== 详情卡片 ========== */
-        .detail-card { border-radius: 24px; padding: 32px; transition: transform 0.3s ease, box-shadow 0.3s ease; background: linear-gradient(135deg, rgba(255, 255, 255, 0.4) 0%, rgba(255, 255, 255, 0.18) 100%); backdrop-filter: blur(35px) saturate(195%); border: 1.5px solid rgba(255, 255, 255, 0.5); border-bottom-color: rgba(255, 255, 255, 0.22); border-right-color: rgba(255, 255, 255, 0.28); box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.6), 0 6px 20px rgba(0, 0, 0, 0.06); }
-        .detail-card:hover { transform: translateY(-2px); box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.7), 0 10px 30px rgba(0, 0, 0, 0.1); }
-        .detail-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 28px; padding-bottom: 24px; border-bottom: 1px solid rgba(255, 255, 255, 0.2); }
+        .detail-card {
+            border-radius: 24px; padding: 32px;
+            transition: all 0.35s var(--ease-smooth);
+            background: #E8E8EC;
+            border: 1px solid #D1D1D6;
+            border-bottom-color: #C5C5CF;
+            border-right-color: #C5C5CF;
+            box-shadow: 6px 6px 12px #C5C5CF, -6px -6px 12px #FFFFFF, inset -1px -1px 2px rgba(255,255,255,0.8);
+            position: relative; overflow: hidden;
+        }
+        .detail-card:hover { transform: translateY(-2px); box-shadow: 10px 10px 20px #C5C5CF, -10px -10px 20px #FFFFFF, inset -1px -1px 2px rgba(255,255,255,0.9); }
+        .detail-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 28px; padding-bottom: 24px; border-bottom: 1px solid rgba(0,0,0,0.1); }
+        body.dark .detail-header { border-bottom-color: rgba(255,255,255,0.1); }
         .detail-id { font-size: 22px; font-weight: 700; margin-bottom: 6px; }
         .detail-meta { color: var(--text-secondary); font-size: 14px; }
         .detail-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; }
@@ -444,7 +667,13 @@
         
         /* ========== 配置页 ========== */
         .config-tabs { display: flex; gap: 8px; padding: 6px; border-radius: 28px; margin-bottom: 24px; width: fit-content; }
-        .config-tab { padding: 12px 24px; border-radius: 22px; border: none; background: transparent; font-size: 14px; font-weight: 500; color: var(--text-secondary); cursor: pointer; transition: all 0.2s ease; }
+        .config-tab {
+            padding: 12px 24px; border-radius: 22px; border: none;
+            background: transparent; font-size: 14px; font-weight: 500;
+            color: var(--text-secondary); cursor: pointer;
+            transition: all 0.25s var(--ease-smooth);
+            position: relative; overflow: hidden;
+        }
         .config-tab:hover { background: rgba(255,255,255,0.15); color: var(--text-primary); }
         .config-tab.active { background: linear-gradient(135deg, rgba(255,255,255,0.6) 0%, rgba(255,255,255,0.3) 100%); color: var(--text-primary); box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
         .config-content { display: none; }
@@ -459,14 +688,41 @@
         .step-content p { font-size: 13px; color: var(--text-secondary); }
         
         /* ========== Toast ========== */
-        .toast { position: fixed; bottom: 100px; left: 50%; transform: translateX(-50%) translateY(20px); padding: 14px 28px; border-radius: 28px; font-size: 14px; font-weight: 500; opacity: 0; visibility: hidden; transition: all 0.3s ease; z-index: 2000; background: linear-gradient(135deg, rgba(30,30,35,0.95) 0%, rgba(50,50,55,0.9) 100%); color: white; backdrop-filter: blur(20px); box-shadow: 0 10px 40px rgba(0,0,0,0.3); }
+        .toast {
+            position: fixed; bottom: 100px; left: 50%;
+            transform: translateX(-50%) translateY(20px);
+            padding: 14px 28px; border-radius: 28px;
+            font-size: 14px; font-weight: 500;
+            opacity: 0; visibility: hidden;
+            transition: all 0.35s var(--ease-smooth);
+            z-index: 2000;
+            background: linear-gradient(135deg, rgba(30,30,35,0.96) 0%, rgba(50,50,55,0.92) 100%);
+            color: white;
+            box-shadow: 0 12px 48px rgba(0,0,0,0.35), 0 0 0 1px rgba(255,255,255,0.08);
+            border: 1px solid rgba(255,255,255,0.08);
+        }
         .toast.show { opacity: 1; visibility: visible; transform: translateX(-50%) translateY(0); }
         .toast.success { background: linear-gradient(135deg, rgba(16,185,129,0.95) 0%, rgba(5,150,105,0.9) 100%); }
         .toast.error { background: linear-gradient(135deg, rgba(239,68,68,0.95) 0%, rgba(220,38,38,0.9) 100%); }
         .toast.warning { background: linear-gradient(135deg, rgba(245,158,11,0.95) 0%, rgba(217,119,6,0.9) 100%); }
         
         /* ========== 状态 pill ========== */
-        .status-pill { position: fixed; bottom: 24px; right: 24px; padding: 10px 20px; border-radius: 24px; display: flex; align-items: center; gap: 10px; font-size: 13px; font-weight: 500; cursor: pointer; transition: all 0.2s ease; z-index: 9999; }
+        .status-pill {
+            position: fixed; bottom: 24px; right: 24px;
+            padding: 10px 20px; border-radius: 24px;
+            display: flex; align-items: center; gap: 10px;
+            font-size: 13px; font-weight: 500; cursor: pointer;
+            transition: all 0.3s var(--ease-spring);
+            z-index: 9999;
+            background: #E8E8EC;
+            border: 1px solid #D1D1D6;
+            box-shadow: 4px 4px 8px #C5C5CF, -4px -4px 8px #FFFFFF;
+        }
+        body.dark .status-pill {
+            background: #1E1E28;
+            border-color: #2A2A38;
+            box-shadow: 4px 4px 8px #13131A, -4px -4px 8px #252530;
+        }
         .status-pill:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(0,0,0,0.15); }
         .status-dot { width: 8px; height: 8px; background: var(--accent-green); border-radius: 50%; }
         .status-dot.syncing { background: var(--accent-purple); animation: pulse 1.5s infinite; }
@@ -474,15 +730,30 @@
         
         /* ========== 分页 ========== */
         .pagination { display: flex; justify-content: center; align-items: center; gap: 8px; margin-top: 20px; }
-        .page-btn { min-width: 36px; height: 36px; border-radius: 18px; border: 1px solid rgba(255,255,255,0.3); background: rgba(255,255,255,0.2); font-size: 14px; font-weight: 500; cursor: pointer; transition: all 0.2s ease; display: flex; align-items: center; justify-content: center; }
-        .page-btn:hover:not(:disabled) { background: rgba(255,255,255,0.35); }
+        .page-btn { min-width: 36px; height: 36px; border-radius: 18px; border: 1px solid #D1D1D6; background: #E8E8EC; font-size: 14px; font-weight: 500; cursor: pointer; transition: all 0.2s ease; display: flex; align-items: center; justify-content: center; box-shadow: 2px 2px 4px #C5C5CF, -2px -2px 4px #FFFFFF; }
+        .page-btn:hover:not(:disabled) { background: #F0F0F3; box-shadow: 3px 3px 6px #C5C5CF, -3px -3px 6px #FFFFFF; }
+        body.dark .page-btn { background: #1E1E28; border-color: #2A2A38; box-shadow: 2px 2px 4px #13131A, -2px -2px 4px #252530; }
+        body.dark .page-btn:hover:not(:disabled) { background: #252530; box-shadow: 3px 3px 6px #13131A, -3px -3px 6px #252530; }
         .page-btn:disabled { opacity: 0.4; cursor: not-allowed; }
         .page-btn.active { background: linear-gradient(135deg, var(--accent-purple), var(--accent-pink)); color: white; border-color: transparent; }
         
         /* ========== 模态框 ========== */
-        .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); backdrop-filter: blur(5px); z-index: 1500; opacity: 0; visibility: hidden; transition: all 0.3s ease; }
+        .modal-overlay {
+            position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.45);
+            z-index: 1500;
+            opacity: 0; visibility: hidden;
+            transition: all 0.3s var(--ease-smooth);
+        }
         .modal-overlay.show { opacity: 1; visibility: visible; }
-        .modal { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%) scale(0.95); z-index: 1501; width: 90%; max-width: 500px; opacity: 0; visibility: hidden; transition: all 0.3s ease; }
+        .modal {
+            position: fixed; top: 50%; left: 50%;
+            transform: translate(-50%, -50%) scale(0.92);
+            z-index: 1501; width: 90%; max-width: 500px;
+            opacity: 0; visibility: hidden;
+            transition: all 0.35s var(--ease-smooth);
+            filter: blur(4px);
+        }
         .modal.show { opacity: 1; visibility: visible; transform: translate(-50%, -50%) scale(1); }
         .modal-header { padding: 24px 24px 0; }
         .modal-body { padding: 20px 24px; }
@@ -525,103 +796,431 @@
             display: flex; align-items: center; justify-content: center; cursor: pointer;
             box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
             z-index: 9998; transition: all 0.3s ease; font-size: 24px;
+            padding: 0; line-height: 1;
         }
+        #aiFloatIcon { display: flex; align-items: center; justify-content: center; line-height: 1; }
         .ai-float-btn:hover { transform: scale(1.1); box-shadow: 0 8px 28px rgba(102, 126, 234, 0.5); }
         .ai-float-btn.active { background: linear-gradient(135deg, #764ba2 0%, #667eea 100%); }
 
         /* ========== AI对话浮窗 ========== */
+        /* ========== AI对话浮窗 — 全新设计 ========== */
         .ai-chat-overlay {
             position: fixed; top: 0; left: 0; right: 0; bottom: 0;
-            background: rgba(0,0,0,0.4); backdrop-filter: blur(6px);
+            background: rgba(0,0,0,0.55);
             z-index: 99997; display: none; align-items: center; justify-content: center;
         }
         .ai-chat-overlay.show { display: flex; }
         .ai-chat-window {
             width: 52vw; max-width: 900px; height: 72vh; max-height: 680px;
             border-radius: 24px; display: flex; flex-direction: column;
-            overflow: hidden; box-shadow: 0 30px 80px rgba(0,0,0,0.35);
-            transition: all 0.3s ease;
+            overflow: hidden;
+            box-shadow: 6px 6px 12px #C5C5CF, -6px -6px 12px #FFFFFF, inset -1px -1px 2px rgba(255,255,255,0.8);
+            transition: all 0.35s var(--ease-smooth);
+            background: #E8E8EC;
+            border: 1px solid #D1D1D6;
+            border-bottom-color: #C5C5CF;
+            border-right-color: #C5C5CF;
+            position: relative;
+        }
+        body.dark .ai-chat-window {
+            background: #1E1E28;
+            border: 1px solid #2A2A38;
+            border-bottom-color: #13131A;
+            border-right-color: #13131A;
+            box-shadow: 6px 6px 12px #13131A, -6px -6px 12px #252530, inset -1px -1px 2px rgba(255,255,255,0.03);
         }
         .ai-chat-header {
             display: flex; align-items: center; justify-content: space-between;
-            padding: 16px 18px; border-bottom: 1px solid rgba(255,255,255,0.15);
-            background: linear-gradient(135deg, rgba(102,126,234,0.15) 0%, rgba(118,75,162,0.1) 100%);
+            padding: 14px 20px;
+            background: #F0F0F3;
+            border-bottom: 1px solid #D1D1D6;
+            box-shadow: inset 0 1px 0 #FFFFFF;
+            position: relative; z-index: 1;
+        }
+        body.dark .ai-chat-header {
+            background: #252530;
+            border-bottom-color: #2A2A38;
+            box-shadow: inset 0 1px 0 rgba(255,255,255,0.05);
         }
         .ai-chat-title { display: flex; align-items: center; gap: 10px; }
-        .ai-chat-icon { font-size: 28px; }
-        .ai-chat-name { font-size: 15px; font-weight: 600; color: var(--text-primary); }
-        .ai-chat-sub { font-size: 11px; color: var(--text-secondary); margin-top: 1px; }
-        .ai-chat-controls { display: flex; gap: 6px; }
+        .ai-chat-icon { width: 36px; height: 36px; border-radius: 12px; background: #7B5FBF; display: flex; align-items: center; justify-content: center; color: white; box-shadow: 3px 3px 6px #C5C5CF, -3px -3px 6px #FFFFFF; }
+        .ai-chat-name { font-size: 15px; font-weight: 700; color: #2D2D3A; }
+        body.dark .ai-chat-name { color: #f0f0f5; }
+        .ai-chat-sub { font-size: 11px; color: rgba(0,0,0,0.45); margin-top: 1px; font-weight: 500; }
+        body.dark .ai-chat-sub { color: rgba(255,255,255,0.4); }
+        .ai-chat-controls { display: flex; gap: 8px; }
         .ai-btn-clear, .ai-btn-close {
-            width: 30px; height: 30px; border-radius: 10px; border: none; cursor: pointer;
-            font-size: 13px; display: flex; align-items: center; justify-content: center;
-            transition: all 0.2s;
+            width: 32px; height: 32px; border-radius: 10px; border: none; cursor: pointer;
+            display: flex; align-items: center; justify-content: center;
+            transition: all 0.2s var(--ease-spring);
+            padding: 0;
+            line-height: 1;
         }
-        .ai-btn-clear { background: rgba(239,68,68,0.12); color: #ef4444; }
-        .ai-btn-clear:hover { background: rgba(239,68,68,0.22); }
-        .ai-btn-close { background: rgba(255,255,255,0.1); color: var(--text-secondary); }
-        .ai-btn-close:hover { background: rgba(255,255,255,0.2); }
+        .ai-btn-clear { background: #F0E0E0; color: #D64545; border: 1px solid #E0C0C0; }
+        .ai-btn-clear:hover { background: #E8D0D0; transform: scale(1.1); }
+        .ai-btn-close { background: #E8E8EC; color: #6C6C7A; border: 1px solid #D1D1D6; box-shadow: 2px 2px 4px #C5C5CF, -2px -2px 4px #FFFFFF; }
+        .ai-btn-close:hover { background: #ECECF0; transform: scale(1.1); }
+        body.dark .ai-btn-close { background: #1E1E28; color: #8A8A95; border-color: #2A2A38; box-shadow: 2px 2px 4px #13131A, -2px -2px 4px #252530; }
+        body.dark .ai-btn-close:hover { background: rgba(255,255,255,0.15); }
 
         .ai-chat-messages {
-            flex: 1; overflow-y: auto; padding: 16px; display: flex; flex-direction: column; gap: 12px;
+            flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 16px;
+            background: #E4E4E8;
         }
-        .ai-chat-messages::-webkit-scrollbar { width: 4px; }
-        .ai-chat-messages::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 4px; }
+        body.dark .ai-chat-messages { background: #181820; }
+        .ai-chat-messages::-webkit-scrollbar { width: 5px; }
+        .ai-chat-messages::-webkit-scrollbar-thumb { background: #C5C5CF; border-radius: 4px; }
+        body.dark .ai-chat-messages::-webkit-scrollbar-thumb { background: #2A2A38; }
 
-        .ai-msg { display: flex; gap: 8px; align-items: flex-start; }
+        .ai-msg { display: flex; gap: 10px; align-items: flex-start; position: relative; z-index: 1; }
         .ai-msg-bot { }
         .ai-msg-user { flex-direction: row-reverse; }
-        .ai-msg-avatar { font-size: 20px; flex-shrink: 0; width: 28px; height: 28px; border-radius: 50%;
-            background: linear-gradient(135deg, #667eea, #764ba2); display: flex; align-items: center; justify-content: center; font-size: 14px; }
-        .ai-msg-user .ai-msg-avatar { background: linear-gradient(135deg, #10b981, #059669); }
+        .ai-msg-avatar {
+            flex-shrink: 0; width: 32px; height: 32px; border-radius: 10px;
+            background: #7B5FBF;
+            display: flex; align-items: center; justify-content: center;
+            color: white; box-shadow: 2px 2px 4px #C5C5CF, -2px -2px 4px #FFFFFF;
+        }
+        .ai-msg-user .ai-msg-avatar { background: #5FA88F; box-shadow: 2px 2px 4px #C5C5CF, -2px -2px 4px #FFFFFF; }
         .ai-msg-bubble {
-            max-width: 75%; padding: 10px 14px; border-radius: 16px; font-size: 14px;
-            line-height: 1.5; color: var(--text-primary);
-            background: rgba(255,255,255,0.12); border-bottom-left-radius: 4px;
+            max-width: 78%; padding: 12px 16px; border-radius: 18px; font-size: 14px;
+            line-height: 1.65; color: #2D2D3A;
+            background: #F0F0F3;
+            border: 1px solid #D1D1D6;
+            box-shadow: 4px 4px 8px #C5C5CF, -4px -4px 8px #FFFFFF;
+            border-bottom-left-radius: 4px;
         }
+        body.dark .ai-msg-bubble { color: #E8E8EC; background: #252530; border-color: #2A2A38; box-shadow: 4px 4px 8px #13131A, -4px -4px 8px #2A2A38; }
         .ai-msg-user .ai-msg-bubble {
-            background: linear-gradient(135deg, rgba(102,126,234,0.25) 0%, rgba(118,75,162,0.2) 100%);
-            border-bottom-left-radius: 16px; border-bottom-right-radius: 4px;
+            background: #7B5FBF; color: white; border-color: #6A4FA8;
+            border-bottom-left-radius: 18px; border-bottom-right-radius: 4px;
+            box-shadow: 4px 4px 8px #C5C5CF, -4px -4px 8px #FFFFFF;
         }
-        .ai-msg-bot .ai-msg-bubble { border-bottom-left-radius: 4px; border-bottom-right-radius: 16px; }
-        .ai-msg-typing .ai-msg-bubble { padding: 12px 16px; }
-        .ai-msg-typing::after { content: '...'; }
+        .ai-msg-bot .ai-msg-bubble { border-bottom-left-radius: 4px; border-bottom-right-radius: 18px; }
+        .ai-msg-typing .ai-msg-bubble { padding: 14px 18px; }
         .typing-dots::after { content: ''; animation: typingBounce 1.2s infinite; }
         @keyframes typingBounce { 0%,60%,100%{opacity:0} 30%{opacity:1} }
 
         /* AI thinking 消息 */
         .ai-msg-think { transition: all 0.3s ease; margin-bottom: 4px; }
-        .ai-msg-think .ai-msg-bubble { background: rgba(255,255,255,0.15) !important; border: 1px solid rgba(139,92,246,0.25) !important; font-size: 12px; color: var(--text-secondary); }
+        .ai-msg-think .ai-msg-bubble { background: #E8E4F0 !important; border: 1px solid #D4CCE8 !important; font-size: 12px; color: #6b4c9a; }
+        body.dark .ai-msg-think .ai-msg-bubble { background: #2A2440 !important; color: #a78bfa; }
         .ai-msg-think .ai-msg-avatar { opacity: 0.6; }
         .ai-msg-think.collapsed { max-height: 28px; overflow: hidden; opacity: 0.5; }
         .ai-msg-think.collapsed .ai-msg-bubble { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
         .ai-chat-context {
-            padding: 8px 16px; font-size: 11px; color: var(--text-secondary);
-            border-top: 1px solid rgba(255,255,255,0.08); background: rgba(0,0,0,0.05);
+            padding: 8px 20px; font-size: 11px; font-weight: 500;
+            color: #7A7A85;
+            border-top: 1px solid #D1D1D6; background: #E8E8EC;
         }
+        body.dark .ai-chat-context { color: #6C6C7A; border-top-color: #2A2A38; background: #1E1E28; }
 
         .ai-chat-input-wrap {
-            display: flex; gap: 8px; padding: 12px 16px;
-            border-top: 1px solid rgba(255,255,255,0.1); align-items: flex-end;
+            display: flex; gap: 10px; padding: 14px 20px;
+            border-top: 1px solid #D1D1D6; align-items: flex-end;
+            background: #E8E8EC;
         }
+        body.dark .ai-chat-input-wrap { background: #1E1E28; border-top-color: #2A2A38; }
         .ai-chat-input {
-            flex: 1; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2);
-            border-radius: 16px; padding: 10px 14px; font-size: 14px; color: var(--text-primary);
+            flex: 1; background: #E0E0E6; border: 1.5px solid #D1D1D6;
+            border-radius: 18px; padding: 12px 16px; font-size: 14px; color: #2D2D3A;
             resize: none; outline: none; max-height: 100px; overflow-y: auto;
-            font-family: inherit; line-height: 1.4;
+            font-family: inherit; line-height: 1.5;
+            box-shadow: inset 3px 3px 6px #C5C5CF, inset -3px -3px 6px #FFFFFF;
+            transition: all 0.2s ease;
         }
-        .ai-chat-input::placeholder { color: var(--text-secondary); }
-        .ai-chat-input:focus { border-color: rgba(102,126,234,0.5); }
+        body.dark .ai-chat-input { background: #181820; border-color: #2A2A38; color: #E8E8EC; box-shadow: inset 3px 3px 6px #13131A, inset -3px -3px 6px #252530; }
+        .ai-chat-input::placeholder { color: #9A9AA5; }
+        body.dark .ai-chat-input::placeholder { color: #6C6C7A; }
+        .ai-chat-input:focus { border-color: #7B5FBF; box-shadow: inset 2px 2px 4px #C5C5CF, inset -2px -2px 4px #FFFFFF, 0 4px 16px rgba(139,92,246,0.12), 0 0 0 3px rgba(139,92,246,0.10); }
         .ai-send-btn {
-            width: 38px; height: 38px; border-radius: 50%; border: none;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white; font-size: 16px; cursor: pointer; flex-shrink: 0;
+            width: 40px; height: 40px; border-radius: 50%; border: none;
+            background: #7B5FBF;
+            color: white; cursor: pointer; flex-shrink: 0;
             display: flex; align-items: center; justify-content: center;
-            transition: all 0.2s;
+            transition: all 0.25s var(--ease-spring);
+            box-shadow: 3px 3px 6px #C5C5CF, -3px -3px 6px #FFFFFF;
         }
-        .ai-send-btn:hover { transform: scale(1.08); }
-        .ai-send-btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+        .ai-send-btn:hover { transform: scale(1.1); box-shadow: 4px 4px 8px #C5C5CF, -4px -4px 8px #FFFFFF; }
+        .ai-send-btn:active { transform: scale(0.95); }
+        .ai-send-btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none; box-shadow: none; }
+
+        /* ========================================== */
+        /* iOS 26 设计级增强 — 全局覆盖与动画系统       */
+        /* ========================================== */
+
+        /* 滚动条全局美化 */
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: rgba(139,92,246,0.18); border-radius: 10px; }
+        ::-webkit-scrollbar-thumb:hover { background: rgba(139,92,246,0.35); }
+        body.dark ::-webkit-scrollbar-thumb { background: rgba(139,92,246,0.22); }
+        body.dark ::-webkit-scrollbar-thumb:hover { background: rgba(139,92,246,0.42); }
+
+        /* 文字选中 */
+        ::selection { background: rgba(139,92,246,0.22); color: inherit; }
+        body.dark ::selection { background: rgba(139,92,246,0.35); }
+
+        /* 焦点环 */
+        *:focus-visible { outline: 2px solid rgba(139,92,246,0.35); outline-offset: 2px; border-radius: 8px; }
+
+        /* 页面入场增强 */
+        @keyframes pageEnter {
+            from { opacity: 0; transform: translateY(24px) scale(0.97); filter: blur(4px); }
+            to { opacity: 1; transform: translateY(0) scale(1); filter: blur(0); }
+        }
+        .page.active { animation: pageEnter 0.55s var(--ease-out-expo) both; }
+
+        /* 顶部栏 */
+        .topbar { transition: all 0.4s var(--ease-smooth); }
+
+        /* 导航按钮下划线光效 */
+        .nav-btn { position: relative; overflow: hidden; }
+        .nav-btn::after {
+            content: '';
+            position: absolute;
+            bottom: 2px; left: 50%; right: 50%;
+            height: 2.5px;
+            background: linear-gradient(90deg, transparent, var(--accent-purple), var(--accent-pink), transparent);
+            border-radius: 2px;
+            transition: all 0.35s var(--ease-out-expo);
+            opacity: 0;
+        }
+        .nav-btn:hover::after { left: 18%; right: 18%; opacity: 0.8; }
+        .nav-btn.active::after { left: 14%; right: 14%; opacity: 1; }
+
+        /* Icon按钮弹性 */
+        .icon-btn { transition: all 0.25s var(--ease-spring); }
+        .icon-btn:hover { transform: scale(1.12) rotate(4deg); }
+        .icon-btn:active { transform: scale(0.93); }
+
+        /* 登录卡片呼吸浮动 */
+        @keyframes loginFloat {
+            0%, 100% { transform: translateY(0) rotateX(0); }
+            50% { transform: translateY(-5px) rotateX(1deg); }
+        }
+        .login-card { animation: loginFloat 5s ease-in-out infinite; }
+        .login-card:hover { animation-play-state: paused; transform: translateY(-2px) scale(1.01); }
+        .login-logo { animation: logoPulse 4s ease-in-out infinite; }
+        @keyframes logoPulse {
+            0%, 100% { box-shadow: 0 6px 24px rgba(168,85,247,0.4); }
+            50% { box-shadow: 0 8px 32px rgba(168,85,247,0.6); }
+        }
+
+        /* 按钮光扫 + 弹性 */
+        .btn { transition: all 0.25s var(--ease-spring); }
+        .btn::before {
+            content: '';
+            position: absolute;
+            top: 0; left: -100%;
+            width: 60%; height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.25), transparent);
+            transition: left 0.6s ease;
+            pointer-events: none;
+        }
+        .btn:hover::before { left: 150%; }
+        .btn-primary:hover:not(:disabled) { transform: translateY(-2px) scale(1.02); box-shadow: 0 8px 28px rgba(139,92,246,0.5), inset 0 1px 1px rgba(255,255,255,0.4); }
+        .btn-primary:active:not(:disabled) { transform: translateY(0) scale(0.98); }
+        .btn-secondary:hover:not(:disabled) { transform: translateY(-2px) scale(1.02); box-shadow: 0 4px 16px rgba(0,0,0,0.08); }
+        .btn-danger:hover:not(:disabled) { transform: translateY(-2px) scale(1.02); box-shadow: 0 6px 20px rgba(239,68,68,0.35); }
+
+        /* KPI卡片弹性3D */
+        .kpi-card { transition: all 0.4s var(--ease-spring); }
+        .kpi-card:hover { transform: translateY(-6px) scale(1.02); }
+        .kpi-card:active { transform: translateY(-2px) scale(0.99); }
+        .kpi-value { text-shadow: 0 2px 10px rgba(0,0,0,0.06); transition: all 0.3s ease; }
+        .kpi-card:hover .kpi-value { transform: scale(1.06); }
+        .kpi-icon { transition: all 0.35s var(--ease-spring); }
+        .kpi-card:hover .kpi-icon { transform: scale(1.18) rotate(-6deg); }
+        .kpi-trend { transition: all 0.3s ease; }
+        .kpi-card:hover .kpi-trend { transform: translateY(-2px); }
+
+        /* 图表卡片 */
+        .chart-card { transition: all 0.35s var(--ease-smooth); }
+        .chart-card:hover { transform: translateY(-3px); }
+
+        /* 统计项弹性 */
+        .stat-item { transition: all 0.35s var(--ease-spring); }
+        .stat-item:hover { transform: translateY(-4px) scale(1.03); }
+        .stat-value { transition: all 0.3s ease; }
+        .stat-item:hover .stat-value { transform: scale(1.08); }
+        .stat-progress-bar { transition: width 0.9s var(--ease-out-expo); }
+
+        /* 表格行 */
+        tbody tr { transition: all 0.2s ease; }
+        tbody tr:hover { background: rgba(139, 92, 246, 0.06); transform: scale(1.001); }
+
+        /* 标签弹性 */
+        .tag { transition: all 0.2s var(--ease-spring); }
+        .tag:hover { transform: scale(1.06); }
+
+        /* Toast弹跳 */
+        @keyframes toastBounce {
+            0% { opacity: 0; transform: translateX(-50%) translateY(30px) scale(0.9); }
+            60% { opacity: 1; transform: translateX(-50%) translateY(-4px) scale(1.02); }
+            100% { transform: translateX(-50%) translateY(0) scale(1); }
+        }
+        .toast.show { animation: toastBounce 0.5s var(--ease-spring); }
+
+        /* 模态框模糊入场 */
+        @keyframes modalEnter {
+            from { opacity: 0; transform: translate(-50%, -45%) scale(0.92); filter: blur(6px); }
+            to { opacity: 1; transform: translate(-50%, -50%) scale(1); filter: blur(0); }
+        }
+        @keyframes overlayFade {
+        }
+        .modal.show { animation: modalEnter 0.35s var(--ease-out-expo) both; }
+        .modal-overlay.show { animation: overlayFade 0.3s ease both; }
+
+        /* 确认对话框弹入 */
+        @keyframes confirmPop {
+            0% { opacity: 0; transform: scale(0.85); }
+            70% { transform: scale(1.03); }
+            100% { opacity: 1; transform: scale(1); }
+        }
+        .confirm-dialog { animation: confirmPop 0.4s var(--ease-spring); }
+
+        /* 鱼骨图卡片 */
+        .flow-step-card { transition: all 0.3s var(--ease-smooth); }
+        .flow-step-card:hover { transform: translateY(-4px) scale(1.02); box-shadow: 0 10px 28px rgba(0,0,0,0.1); }
+        .flow-step-icon { transition: all 0.3s var(--ease-spring); }
+        .flow-step-card:hover .flow-step-icon { transform: scale(1.15) rotate(5deg); }
+
+        /* 详情卡片 */
+        .detail-card { transition: all 0.35s var(--ease-smooth); }
+        .detail-card:hover { transform: translateY(-3px); box-shadow: inset 0 1px 1px rgba(255,255,255,0.75), 0 14px 40px rgba(0,0,0,0.1); }
+
+        /* 配置tab脉冲 */
+        @keyframes tabPulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.04); }
+            100% { transform: scale(1); }
+        }
+        .config-tab.active { animation: tabPulse 0.35s var(--ease-spring); }
+
+        /* 分页弹性 */
+        .page-btn { transition: all 0.2s var(--ease-spring); }
+        .page-btn:hover:not(:disabled) { transform: scale(1.12); }
+        .page-btn.active { animation: tabPulse 0.3s ease; }
+
+        /* AI浮球浮动 */
+        @keyframes aiFloat {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-5px); }
+        }
+        .ai-float-btn { animation: aiFloat 3s ease-in-out infinite; box-shadow: 0 6px 20px rgba(102,126,234,0.4), 0 0 0 0 rgba(102,126,234,0.3); }
+        .ai-float-btn:hover { animation-play-state: paused; transform: scale(1.15); box-shadow: 0 10px 32px rgba(102,126,234,0.55), 0 0 0 6px rgba(102,126,234,0.1); }
+
+        /* AI聊天窗口入场 */
+        @keyframes chatEnter {
+            from { opacity: 0; transform: scale(0.88) translateY(24px); filter: blur(8px); }
+            to { opacity: 1; transform: scale(1) translateY(0); filter: blur(0); }
+        }
+        .ai-chat-overlay.show .ai-chat-window { animation: chatEnter 0.4s var(--ease-out-expo) both; }
+
+        /* AI消息气泡 */
+        .ai-msg-bubble { transition: all 0.2s ease; }
+        .ai-msg-bot .ai-msg-bubble:hover { transform: translateX(3px); }
+        .ai-msg-user .ai-msg-bubble:hover { transform: translateX(-3px); }
+
+        /* 状态pill */
+        .status-pill { transition: all 0.3s var(--ease-spring); }
+        .status-pill:hover { transform: translateY(-3px) scale(1.03); }
+
+        /* 空状态 */
+        @keyframes emptyFade {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .empty-state { animation: emptyFade 0.6s var(--ease-smooth) both; }
+
+        /* 骨架屏 */
+        .skeleton { border-radius: 12px; animation: skeletonShimmer 1.8s infinite linear; }
+        @keyframes skeletonShimmer {
+            0% { background-position: 200% 0; }
+            100% { background-position: -200% 0; }
+        }
+
+        /* Spinner发光 */
+        .loading-spinner { box-shadow: 0 0 10px rgba(139,92,246,0.25); animation: spin 0.7s linear infinite; }
+
+        /* 表单输入聚焦发光 */
+        .form-input:focus, .input:focus, .login-form .form-input:focus {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 14px rgba(139,92,246,0.12), 0 0 0 3px rgba(139,92,246,0.1), inset 0 1px 1px rgba(255,255,255,0.9);
+        }
+
+        /* 选择器hover */
+        .custom-select-trigger:hover, .multi-select-trigger:hover { transform: translateY(-1px); }
+
+        /* 编辑弹窗表单 */
+        .form-input { transition: all 0.25s var(--ease-smooth); }
+
+        /* 详情字段行 */
+        .detail-field-row { transition: all 0.2s ease; }
+
+        /* 搜索统计滑入 */
+        @keyframes statsSlide {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* 同步圆环平滑 */
+        #syncProgressRing { transition: opacity 0.35s ease; }
+        #syncRingBar { transition: stroke-dashoffset 0.55s var(--ease-smooth), stroke 0.3s ease; }
+
+        /* 卡片通用 */
+        .card { transition: all 0.35s var(--ease-smooth); }
+        .card:hover { transform: translateY(-3px); }
+
+        /* 人员表格淡入交错 */
+        @keyframes rowFadeIn {
+            from { opacity: 0; transform: translateX(-10px); }
+            to { opacity: 1; transform: translateX(0); }
+        }
+
+        /* 数字弹出动画（JS可动态添加此类） */
+        @keyframes countPop {
+            0% { transform: scale(0.7); opacity: 0; }
+            60% { transform: scale(1.12); }
+            100% { transform: scale(1); opacity: 1; }
+        }
+
+        /* 脉冲点增强 */
+        .pulse-dot { box-shadow: 0 0 8px var(--accent-green); }
+
+        /* 操作按钮 */
+        .action-btn { transition: all 0.25s var(--ease-spring); }
+        .action-btn:hover { transform: translateY(-2px) scale(1.04); }
+
+        /* 多选面板项 */
+        .multi-select-item { transition: all 0.18s ease; }
+        .multi-select-item:hover { transform: translateX(3px); }
+
+        /* 自定义选项 */
+        .custom-select-option { transition: all 0.18s ease; }
+        .custom-select-option:hover { transform: translateX(3px); }
+
+        /* 步骤列表 */
+        .step-num { transition: all 0.3s var(--ease-spring); box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
+        .step:hover .step-num { transform: scale(1.1); }
+
+        /* 排序图标 */
+        .sort-icon { transition: all 0.25s var(--ease-spring); }
+        .sortable:hover .sort-icon { transform: scale(1.3); }
+
+        /* 预警表格 */
+        @keyframes warningSlide {
+            from { opacity: 0; transform: translateX(-12px); }
+            to { opacity: 1; transform: translateX(0); }
+        }
+
+        /* 深色模式统一微调 */
+        body.dark .kpi-icon.red { background: linear-gradient(135deg, rgba(239,68,68,0.25), rgba(239,68,68,0.12)); }
+        body.dark .kpi-icon.orange { background: linear-gradient(135deg, rgba(249,115,22,0.25), rgba(249,115,22,0.12)); }
+        body.dark .kpi-icon.green { background: linear-gradient(135deg, rgba(16,185,129,0.25), rgba(16,185,129,0.12)); }
+        body.dark .kpi-icon.blue { background: linear-gradient(135deg, rgba(59,130,246,0.25), rgba(59,130,246,0.12)); }
     </style>
 </head>
 <body>
@@ -629,7 +1228,7 @@
     <div class="page active" id="login">
         <div class="login-container">
             <div class="login-card">
-                <div class="login-logo">📋</div>
+                <div class="login-logo"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="8" y1="12" x2="16" y2="12"/><line x1="8" y1="8" x2="12" y2="8"/><line x1="8" y1="16" x2="14" y2="16"/></svg></div>
                 <h1 class="login-title">工单评价系统</h1>
                 <p class="login-subtitle">Work Order Evaluation System v2.0</p>
                 
@@ -668,7 +1267,7 @@
                     </div>
                     
                     <button class="btn btn-secondary btn-offline" onclick="offlineMode()">
-                        <span>💾 离线模式</span>
+                        <span><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:4px;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg> 离线模式</span>
                     </button>
                 </div>
                 
@@ -683,9 +1282,9 @@
     <!-- 主应用容器（登录后显示） -->
     <div class="app-container" id="appContainer">
         <!-- 顶部栏 -->
-        <header class="topbar" style="background:rgba(255,255,255,0.15);backdrop-filter:blur(20px);border-bottom:1.5px solid rgba(255,255,255,0.4);">
+        <header class="topbar">
             <div class="logo">
-                <div class="logo-icon">📋</div>
+                <div class="logo-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="8" y1="12" x2="16" y2="12"/><line x1="8" y1="8" x2="12" y2="8"/><line x1="8" y1="16" x2="14" y2="16"/></svg></div>
                 <span>工单评价系统</span><span class="app-version">v0.0.10</span>
             </div>
             <nav class="nav">
@@ -709,12 +1308,12 @@
                     <button class="icon-btn" id="crawlerBtn" onclick="quickSync()" title="数据同步" style="position:relative;">
                         <span id="syncRingWrap" style="position:absolute;top:-4px;right:-4px;width:36px;height:36px;pointer-events:none;"></span>
                         <span id="crawlerDot" class="pulse-dot" style="display:none;position:absolute;top:6px;right:6px;"></span>
-                        <span id="crawlerIcon">📥</span>
+                        <span id="crawlerIcon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg></span>
                     </button>
                 </div>
-                <button class="icon-btn" id="refreshBtn" onclick="refreshData()" title="刷新数据">🔄</button>
-                <button class="icon-btn" id="themeBtn" onclick="toggleTheme()" title="切换主题">☀</button>
-                <button class="icon-btn" onclick="logout()" title="退出登录">🚪</button>
+                <button class="icon-btn" id="refreshBtn" onclick="refreshData()" title="刷新数据"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg></button>
+                <button class="icon-btn" id="themeBtn" onclick="toggleTheme()" title="切换主题"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg></button>
+                <button class="icon-btn" onclick="logout()" title="退出登录"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg></button>
             </div>
         </header>
 
@@ -736,14 +1335,14 @@
                 </div>
                 <div style="display:flex;gap:10px;">
                     <button class="btn btn-secondary" onclick="exportKpiReport()" id="kpiExportBtn" style="padding:8px 18px;font-size:13px;">
-                        <span>📊</span><span class="btn-text">导出KPI报表</span>
+                        <span><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:4px;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg></span><span class="btn-text">导出KPI报表</span>
                     </button>
                 </div>
             </div>
             <div class="kpi-grid">
                 <div class="kpi-card glass" onclick="filterByLevel('all')">
                     <div class="kpi-header">
-                        <div class="kpi-icon red">📊</div>
+                        <div class="kpi-icon red"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg></div>
                         <span class="kpi-trend" id="kpiTotalTrend">--</span>
                     </div>
                     <div class="kpi-value" id="kpiTotal">--</div>
@@ -751,7 +1350,7 @@
                 </div>
                 <div class="kpi-card glass" onclick="filterByLevel('warning')">
                     <div class="kpi-header">
-                        <div class="kpi-icon orange">⚠️</div>
+                        <div class="kpi-icon orange"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></div>
                         <span class="kpi-trend" id="kpiPendingTrend">--</span>
                     </div>
                     <div class="kpi-value" id="kpiPending">--</div>
@@ -759,7 +1358,7 @@
                 </div>
                 <div class="kpi-card glass" onclick="filterByLevel('success')">
                     <div class="kpi-header">
-                        <div class="kpi-icon green">✅</div>
+                        <div class="kpi-icon green"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>
                         <span class="kpi-trend" id="kpiCompletedTrend">--</span>
                     </div>
                     <div class="kpi-value" id="kpiCompleted">--</div>
@@ -767,7 +1366,7 @@
                 </div>
                 <div class="kpi-card glass" onclick="filterByLevel('rate')">
                     <div class="kpi-header">
-                        <div class="kpi-icon blue">⭐</div>
+                        <div class="kpi-icon blue"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg></div>
                         <span class="kpi-trend" id="kpiRateTrend">--</span>
                     </div>
                     <div class="kpi-value" id="kpiRate">--</div>
@@ -791,28 +1390,28 @@
             </div>
 
             <div class="stats-grid">
-                <div class="stat-item glass-deep" onclick="filterByRole('leader')" style="cursor:pointer;">
+                <div class="stat-item glass" onclick="filterByRole('leader')" style="cursor:pointer;">
                     <div style="display:flex;align-items:baseline;justify-content:center;gap:8px;">
                         <span class="stat-value red" id="statLeaderInitiated">-</span><span class="stat-pct-tag" id="statLeaderPct"></span>
                     </div>
                     <div class="stat-label">项目负责人<span class="stat-count-badge" id="statLeaderCount"></span></div>
                     <div class="stat-progress"><div class="stat-progress-bar red" id="statLeaderBar"></div></div>
                 </div>
-                <div class="stat-item glass-deep" onclick="filterByRole('manager')" style="cursor:pointer;">
+                <div class="stat-item glass" onclick="filterByRole('manager')" style="cursor:pointer;">
                     <div style="display:flex;align-items:baseline;justify-content:center;gap:8px;">
                         <span class="stat-value orange" id="statManagerInitiated">-</span><span class="stat-pct-tag" id="statManagerPct"></span>
                     </div>
                     <div class="stat-label">部门管理<span class="stat-count-badge" id="statManagerCount"></span></div>
                     <div class="stat-progress"><div class="stat-progress-bar orange" id="statManagerBar"></div></div>
                 </div>
-                <div class="stat-item glass-deep" onclick="filterByRole('staff')" style="cursor:pointer;">
+                <div class="stat-item glass" onclick="filterByRole('staff')" style="cursor:pointer;">
                     <div style="display:flex;align-items:baseline;justify-content:center;gap:8px;">
                         <span class="stat-value green" id="statStaffInitiated">-</span><span class="stat-pct-tag" id="statStaffPct"></span>
                     </div>
                     <div class="stat-label">一线员工<span class="stat-count-badge" id="statStaffCount"></span></div>
                     <div class="stat-progress"><div class="stat-progress-bar green" id="statStaffBar"></div></div>
                 </div>
-                <div class="stat-item glass-deep" onclick="filterByRole('vendor')" style="cursor:pointer;">
+                <div class="stat-item glass" onclick="filterByRole('vendor')" style="cursor:pointer;">
                     <div style="display:flex;align-items:baseline;justify-content:center;gap:8px;">
                         <span class="stat-value blue" id="statVendorInitiated">-</span><span class="stat-pct-tag" id="statVendorPct"></span>
                     </div>
@@ -823,7 +1422,7 @@
 
             <div class="card glass">
                 <div class="card-header">
-                    <span class="card-title">⚠️ 预警清单</span>
+                    <span class="card-title"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-3px;margin-right:5px;"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>预警清单</span>
                     <button class="btn btn-sm btn-ghost" onclick="viewAllWarnings()">查看全部</button>
                 </div>
                 <div class="card-body">
@@ -859,7 +1458,7 @@
                             <input type="text" class="input" id="searchInput" placeholder="搜索工单号、报修描述、处理人..." onkeyup="handleSearchKeyup(event)">
                         </div>
                         <button class="btn btn-primary" onclick="searchTickets()" id="searchBtn">
-                            <span>🔍</span>
+                            <span><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:4px;"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></span>
                             <span class="btn-text">搜索</span>
                         </button>
                         <button class="btn btn-secondary" onclick="resetSearch()">重置</button>
@@ -943,7 +1542,7 @@
                         </div>
                         <!-- 导出按钮 -->
                         <button class="btn btn-secondary" onclick="exportSearchResults()" id="searchExportBtn" style="padding:8px 18px;font-size:13px;flex-shrink:0;">
-                            <span style="font-size:14px;">📥</span>
+                            <span style="font-size:14px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:4px;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg></span>
                             <span class="btn-text">导出报表</span>
                         </button>
                     </div>
@@ -965,7 +1564,7 @@
                             <div class="flow-step-icon">📸</div>
                             <div class="flow-step-info">
                                 <div class="flow-step-title">随手拍发起</div>
-                                <div class="flow-step-time">🕐 09:23</div>
+                                <div class="flow-step-time"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-1px;margin-right:2px;"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg> 09:23</div>
                             </div>
                         </div>
                         <div class="flow-step-content">张三发起随手拍工单</div>
@@ -973,10 +1572,10 @@
                     <div class="flow-step-card done">
                         <div class="flow-step-status"></div>
                         <div class="flow-step-header">
-                            <div class="flow-step-icon">📋</div>
+                            <div class="flow-step-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="8" y1="12" x2="16" y2="12"/><line x1="8" y1="8" x2="12" y2="8"/><line x1="8" y1="16" x2="14" y2="16"/></svg></div>
                             <div class="flow-step-info">
                                 <div class="flow-step-title">待接单</div>
-                                <div class="flow-step-time">🕐 09:25</div>
+                                <div class="flow-step-time"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-1px;margin-right:2px;"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg> 09:25</div>
                             </div>
                         </div>
                         <div class="flow-step-content">工单进入待接单池</div>
@@ -984,10 +1583,10 @@
                     <div class="flow-step-card done">
                         <div class="flow-step-status"></div>
                         <div class="flow-step-header">
-                            <div class="flow-step-icon">🚀</div>
+                            <div class="flow-step-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="13 17 18 12 13 7"/><polyline points="6 17 11 12 6 7"/></svg></div>
                             <div class="flow-step-info">
                                 <div class="flow-step-title">处理中</div>
-                                <div class="flow-step-time">🕐 09:30</div>
+                                <div class="flow-step-time"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-1px;margin-right:2px;"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg> 09:30</div>
                             </div>
                         </div>
                         <div class="flow-step-content">李四接单并开始处理</div>
@@ -995,10 +1594,10 @@
                     <div class="flow-step-card done">
                         <div class="flow-step-status"></div>
                         <div class="flow-step-header">
-                            <div class="flow-step-icon">👁️</div>
+                            <div class="flow-step-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></div>
                             <div class="flow-step-info">
                                 <div class="flow-step-title">待审核</div>
-                                <div class="flow-step-time">🕐 13:45</div>
+                                <div class="flow-step-time"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-1px;margin-right:2px;"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg> 13:45</div>
                             </div>
                         </div>
                         <div class="flow-step-content">提交审核，等待确认</div>
@@ -1006,10 +1605,10 @@
                     <div class="flow-step-card done">
                         <div class="flow-step-status"></div>
                         <div class="flow-step-header">
-                            <div class="flow-step-icon">✅</div>
+                            <div class="flow-step-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>
                             <div class="flow-step-info">
                                 <div class="flow-step-title">审核完成</div>
-                                <div class="flow-step-time">🕐 14:20</div>
+                                <div class="flow-step-time"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-1px;margin-right:2px;"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg> 14:20</div>
                             </div>
                         </div>
                         <div class="flow-step-content">审核通过，标记完成</div>
@@ -1020,7 +1619,7 @@
                             <div class="flow-step-icon">🎉</div>
                             <div class="flow-step-info">
                                 <div class="flow-step-title">已解决</div>
-                                <div class="flow-step-time">🕐 14:30</div>
+                                <div class="flow-step-time"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-1px;margin-right:2px;"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg> 14:30</div>
                             </div>
                         </div>
                         <div class="flow-step-content">用户确认，工单关闭</div>
@@ -1088,7 +1687,7 @@
 
             <!-- 空状态 -->
             <div class="empty-state" id="searchEmptyState" style="display: none; text-align: center; padding: 80px 20px;">
-                <div style="font-size: 64px; margin-bottom: 16px;">🔍</div>
+                <div style="font-size: 64px; margin-bottom: 16px;"><svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="var(--text-secondary)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></div>
                 <div style="font-size: 18px; font-weight: 600; margin-bottom: 8px;">暂无匹配结果</div>
                 <div style="color: var(--text-secondary);">请尝试调整筛选条件或搜索关键词</div>
             </div>
@@ -1124,7 +1723,7 @@
                     <div class="detail-item"><div class="detail-label">当前节点</div><div class="detail-value" style="color: #10b981;">已解决</div></div>
                     <div class="detail-item"><div class="detail-label">完成时间</div><div class="detail-value">2026-04-08 14:30</div></div>
                     <div class="detail-item"><div class="detail-label">解决耗时</div><div class="detail-value">5小时12分</div></div>
-                    <div class="detail-item"><div class="detail-label">是否及时</div><div class="detail-value" style="color: #10b981;">✓ 及时</div></div>
+                    <div class="detail-item"><div class="detail-label">是否及时</div><div class="detail-value" style="color: #10b981;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-1px;margin-right:3px;"><polyline points="20 6 9 17 4 12"/></svg> 及时</div></div>
                     <div class="detail-item"><div class="detail-label">处理人</div><div class="detail-value">李四</div></div>
                     <div class="detail-item"><div class="detail-label">评分</div><div class="detail-value" style="color: #f59e0b;">★★★★★</div></div>
                 </div>
@@ -1160,13 +1759,13 @@
                         <div class="search-input-wrap">
                             <input type="text" class="input" id="personnelSearch" placeholder="搜索姓名或工号..." onkeyup="handlePersonnelSearch(event)">
                         </div>
-                        <button class="btn btn-primary" onclick="searchPersonnel()">🔍 搜索</button>
+                        <button class="btn btn-primary" onclick="searchPersonnel()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:4px;"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg> 搜索</button>
                         <button class="btn btn-primary" onclick="openPersonnelForm()" style="background:linear-gradient(135deg,#8b5cf6,#a78bfa);border-color:rgba(139,92,246,0.4);">
-                            <span>＋</span>
+                            <span><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:2px;"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></span>
                             <span class="btn-text">新增</span>
                         </button>
                         <button class="btn btn-secondary" onclick="exportPersonnel()" id="exportBtn">
-                            <span>📥</span>
+                            <span><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:4px;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg></span>
                             <span class="btn-text">导出</span>
                         </button>
                     </div>
@@ -1174,35 +1773,35 @@
             </div>
 
             <div class="stats-grid" style="grid-template-columns: repeat(5, 1fr); margin-bottom: 20px;">
-                <div class="stat-item glass-deep" style="cursor:pointer;" onclick="filterPersonnelByRole('leader')">
+                <div class="stat-item glass" style="cursor:pointer;" onclick="filterPersonnelByRole('leader')">
                     <div style="display:flex;align-items:baseline;justify-content:center;gap:8px;">
                         <span class="stat-value red" id="countLeaderInitiated">-</span><span class="stat-pct-tag" id="countLeaderPct"></span>
                     </div>
                     <div class="stat-label">项目负责人<span class="stat-count-badge" id="countLeaderBadge"></span></div>
                     <div class="stat-progress"><div class="stat-progress-bar red" id="countLeaderBar"></div></div>
                 </div>
-                <div class="stat-item glass-deep" style="cursor:pointer;" onclick="filterPersonnelByRole('manager')">
+                <div class="stat-item glass" style="cursor:pointer;" onclick="filterPersonnelByRole('manager')">
                     <div style="display:flex;align-items:baseline;justify-content:center;gap:8px;">
                         <span class="stat-value orange" id="countManagerInitiated">-</span><span class="stat-pct-tag" id="countManagerPct"></span>
                     </div>
                     <div class="stat-label">部门管理<span class="stat-count-badge" id="countManagerBadge"></span></div>
                     <div class="stat-progress"><div class="stat-progress-bar orange" id="countManagerBar"></div></div>
                 </div>
-                <div class="stat-item glass-deep" style="cursor:pointer;" onclick="filterPersonnelByRole('staff')">
+                <div class="stat-item glass" style="cursor:pointer;" onclick="filterPersonnelByRole('staff')">
                     <div style="display:flex;align-items:baseline;justify-content:center;gap:8px;">
                         <span class="stat-value green" id="countStaffInitiated">-</span><span class="stat-pct-tag" id="countStaffPct"></span>
                     </div>
                     <div class="stat-label">一线员工<span class="stat-count-badge" id="countStaffBadge"></span></div>
                     <div class="stat-progress"><div class="stat-progress-bar green" id="countStaffBar"></div></div>
                 </div>
-                <div class="stat-item glass-deep" style="cursor:pointer;" onclick="filterPersonnelByRole('vendor')">
+                <div class="stat-item glass" style="cursor:pointer;" onclick="filterPersonnelByRole('vendor')">
                     <div style="display:flex;align-items:baseline;justify-content:center;gap:8px;">
                         <span class="stat-value blue" id="countVendorInitiated">-</span><span class="stat-pct-tag" id="countVendorPct"></span>
                     </div>
                     <div class="stat-label">外包<span class="stat-count-badge" id="countVendorBadge"></span></div>
                     <div class="stat-progress"><div class="stat-progress-bar blue" id="countVendorBar"></div></div>
                 </div>
-                <div class="stat-item glass-deep" style="cursor:pointer;background:linear-gradient(135deg,rgba(139,92,246,0.08)0%,rgba(168,85,247,0.04)100%);border-color:rgba(139,92,246,0.2);">
+                <div class="stat-item glass" style="cursor:pointer;background:#E6E0F0;border-color:#C4B8D8;">
                     <div style="display:flex;align-items:baseline;justify-content:center;gap:8px;">
                         <span class="stat-value purple" id="countTotalInitiated">-</span><span class="stat-pct-tag purple" id="countTotalPct"></span>
                     </div>
@@ -1273,8 +1872,8 @@
                                 </table>
                             </div>
                             <div style="margin-top: 20px; display: flex; gap: 12px;">
-                                <button class="btn btn-primary" id="importBtn" onclick="importExcel()">📁 导入Excel</button>
-                                <button class="btn btn-secondary" onclick="downloadTemplate()">📥 下载模板</button>
+                                <button class="btn btn-primary" id="importBtn" onclick="importExcel()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:4px;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg> 导入Excel</button>
+                                <button class="btn btn-secondary" onclick="downloadTemplate()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:4px;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg> 下载模板</button>
                             </div>
                         </div>
                     </div>
@@ -1387,7 +1986,7 @@
                     </div>
                 </div>
                 <div style="margin-top: 24px;">
-                    <button class="btn btn-primary" onclick="saveKPIConfig()">💾 保存配置</button>
+                    <button class="btn btn-primary" onclick="saveKPIConfig()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:4px;"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg> 保存配置</button>
                 </div>
             </div>
 
@@ -1480,7 +2079,7 @@
                     <div class="card-body">
                         <div class="step-list">
                             <div class="step" id="syncStatusComplete">
-                                <div class="step-num" style="background: rgba(16,185,129,0.2); color: #059669;">✓</div>
+                                <div class="step-num" style="background: rgba(16,185,129,0.2); color: #059669;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>
                                 <div class="step-content"><h4>上次同步</h4><p id="lastSyncTime">-- 更新</p></div>
                             </div>
                             <div class="step" id="syncStatusProgress" style="display: none;">
@@ -1490,9 +2089,9 @@
                         </div>
                         <div style="margin-top: 24px; display: flex; gap: 12px;">
                             <button class="btn btn-primary" onclick="startSync()" id="syncBtn">
-                                <span class="btn-text">🔄 立即同步</span>
+                                <span class="btn-text"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:4px;"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg> 立即同步</span>
                             </button>
-                            <button class="btn btn-secondary" onclick="viewSyncLog()">📋 查看日志</button>
+                            <button class="btn btn-secondary" onclick="viewSyncLog()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:4px;"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="8" y1="12" x2="16" y2="12"/><line x1="8" y1="8" x2="12" y2="8"/><line x1="8" y1="16" x2="14" y2="16"/></svg> 查看日志</button>
                         </div>
                     </div>
                 </div>
@@ -1500,28 +2099,28 @@
 
             <!-- 版本更新 -->
             <div class="card glass" style="margin-top: 20px;">
-                <div class="card-header"><span class="card-title">🔔 版本更新</span></div>
+                <div class="card-header"><span class="card-title"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-3px;margin-right:5px;"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg> 版本更新</span></div>
                 <div class="card-body">
                     <div class="step-list">
                         <div class="step">
-                            <div class="step-num" style="background: rgba(59,130,246,0.2); color: #2563eb;">ⓥ</div>
+                            <div class="step-num" style="background: rgba(59,130,246,0.2); color: #2563eb;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg></div>
                             <div class="step-content"><h4>当前版本</h4><p id="currentVersionText">--</p></div>
                         </div>
                         <div class="step" id="updateInfoBox" style="display:none;">
-                            <div class="step-num" style="background: rgba(245,158,11,0.2); color: #d97706;">↑</div>
+                            <div class="step-num" style="background: rgba(245,158,11,0.2); color: #d97706;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></svg></div>
                             <div class="step-content"><h4>最新版本 <span id="latestVersionTag">--</span></h4><p id="releaseNotesText" style="white-space:pre-wrap;font-size:12px;color:var(--text-secondary);max-height:120px;overflow-y:auto;"></p></div>
                         </div>
                         <div class="step" id="updateLatestBox">
-                            <div class="step-num" style="background: rgba(16,185,129,0.2); color: #059669;">✓</div>
+                            <div class="step-num" style="background: rgba(16,185,129,0.2); color: #059669;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>
                             <div class="step-content"><h4>已是最新</h4><p>当前已安装最新版本</p></div>
                         </div>
                     </div>
                     <div style="margin-top: 24px; display: flex; gap: 12px;">
                         <button class="btn btn-primary" onclick="checkUpdate()" id="checkUpdateBtn">
-                            <span class="btn-text">🔍 检测更新</span>
+                            <span class="btn-text"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:4px;"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg> 检测更新</span>
                         </button>
                         <button class="btn btn-secondary" onclick="applyUpdate()" id="applyUpdateBtn" style="display:none;">
-                            <span class="btn-text">⬇️ 立即更新</span>
+                            <span class="btn-text"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:4px;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg> 立即更新</span>
                         </button>
                     </div>
                 </div>
@@ -1585,7 +2184,7 @@
     </div>
 
     <div class="ai-float-btn" id="aiFloatBtn" onclick="toggleAIChat()" style="display: none;">
-        <span id="aiFloatIcon">🤖</span>
+        <span id="aiFloatIcon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M12 2L14.5 9.5L22 12L14.5 14.5L12 22L9.5 14.5L2 12L9.5 9.5Z" fill="currentColor"/></svg></span>
     </div>
 
     <!-- AI 对话浮窗 -->
@@ -1593,20 +2192,20 @@
         <div class="ai-chat-window glass" onclick="event.stopPropagation()">
             <div class="ai-chat-header">
                 <div class="ai-chat-title">
-                    <span class="ai-chat-icon">🤖</span>
+                    <span class="ai-chat-icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M12 2L14.5 9.5L22 12L14.5 14.5L12 22L9.5 14.5L2 12L9.5 9.5Z" fill="currentColor"/></svg></span>
                     <div>
                         <div class="ai-chat-name">金鹰AI助手</div>
                         <div class="ai-chat-sub">基于本系统数据库 · 专注KPI分析</div>
                     </div>
                 </div>
                 <div class="ai-chat-controls">
-                    <button class="ai-btn-clear" onclick="clearAIMessages()" title="清空对话">🗑️</button>
+                    <button class="ai-btn-clear" onclick="clearAIMessages()" title="清空对话"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>
                     <button class="ai-btn-close" onclick="toggleAIChat()">✕</button>
                 </div>
             </div>
             <div class="ai-chat-messages" id="aiMessages">
                 <div class="ai-msg ai-msg-bot">
-                    <span class="ai-msg-avatar">🤖</span>
+                    <span class="ai-msg-avatar"><svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M12 2L14.5 9.5L22 12L14.5 14.5L12 22L9.5 14.5L2 12L9.5 9.5Z" fill="currentColor"/></svg></span>
                     <div class="ai-msg-bubble" id="aiWelcomeBubble">
                         您好！我是金鹰AI助手，可以帮您分析工单数据、KPI完成率、人员绩效、预警情况等。请问有什么可以帮您？
                     </div>
@@ -1619,7 +2218,7 @@
                 <textarea class="ai-chat-input" id="aiInput" placeholder="输入问题，按Enter发送..." rows="1"
                     onkeydown="handleAIInputKey(event)"
                     oninput="autoResizeAIInput(this)"></textarea>
-                <button class="ai-send-btn" id="aiSendBtn" onclick="sendAIMessage()">➤</button>
+                <button class="ai-send-btn" id="aiSendBtn" onclick="sendAIMessage()"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg></button>
             </div>
         </div>
     </div>
@@ -1636,7 +2235,7 @@
     <div class="modal" id="confirmModal">
         <div class="glass-strong" style="border-radius: 24px; overflow: hidden;">
             <div class="confirm-dialog">
-                <div class="confirm-icon warning" id="confirmIcon">⚠️</div>
+                <div class="confirm-icon warning" id="confirmIcon"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></div>
                 <div class="confirm-title" id="confirmTitle">确认操作</div>
                 <div class="confirm-message" id="confirmMessage">确定要执行此操作吗？</div>
                 <div style="display: flex; gap: 12px; justify-content: center;">
@@ -2053,7 +2652,7 @@
         function toggleTheme() {
             state.isDark = !state.isDark;
             document.body.classList.toggle('dark', state.isDark);
-            document.getElementById('themeBtn').textContent = state.isDark ? '☾' : '☀';
+            document.getElementById('themeBtn').innerHTML = state.isDark ? '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>' : '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>';
             localStorage.setItem(CONFIG.THEME_KEY, state.isDark ? 'dark' : 'light');
             showToast(state.isDark ? '已切换到深色模式' : '已切换到亮色模式');
 
@@ -2080,7 +2679,7 @@
             if (saved === 'dark') {
                 state.isDark = true;
                 document.body.classList.add('dark');
-                document.getElementById('themeBtn').textContent = '☾';
+                document.getElementById('themeBtn').innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>';
             }
             // 初始化圆环颜色
             const ringBar = document.getElementById('syncRingBar');
@@ -2213,7 +2812,7 @@
                 // 给登录选择器添加重试选项
                 const loginOptions = document.getElementById('projectLoginOptions');
                 if (loginOptions) {
-                    loginOptions.innerHTML = '<div class="custom-select-option" data-value="" data-label="加载失败" onclick="loadProjectList()" style="color:var(--accent-red);cursor:pointer;">⚠️ 加载失败，点击重试</div>';
+                    loginOptions.innerHTML = '<div class="custom-select-option" data-value="" data-label="加载失败" onclick="loadProjectList()" style="color:var(--accent-red);cursor:pointer;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-1px;margin-right:3px;"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg> 加载失败，点击重试</div>';
                 }
             }
         }
@@ -2921,7 +3520,6 @@ async function loadWarnings() {
                 document.body.appendChild(options);
             });
             
-            // 多选下拉面板也移到body，解决backdrop-filter遮挡问题
             document.querySelectorAll('.multi-select-wrap').forEach(wrap => {
                 const panel = wrap.querySelector('.multi-select-panel');
                 if (!panel) return;
@@ -3333,7 +3931,7 @@ async function loadWarnings() {
             
             document.querySelectorAll('.sort-icon').forEach(icon => icon.textContent = '⇅');
             const icon = document.getElementById(`sort-${field}`);
-            if (icon) icon.textContent = state.searchSort.order === 'asc' ? '↑' : '↓';
+            if (icon) icon.innerHTML = state.searchSort.order === 'asc' ? '<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="18 15 12 9 6 15"/></svg>' : '<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>';
             
             state.searchResults = sortData(state.searchResults, field, state.searchSort.order);
             renderSearchResults();
@@ -4575,7 +5173,7 @@ async function loadWarnings() {
                 const envCheck = await fetch(CONFIG.API_BASE_URL + '/api/sync/check-env').then(r => r.json()).catch(() => null);
                 if (envCheck && !envCheck.ready) {
                     let errMsg = '环境检测不通过：\n\n';
-                    for (const e of envCheck.errors || []) errMsg += '❌ ' + e + '\n';
+                    for (const e of envCheck.errors || []) errMsg += '× ' + e + '\n';
                     errMsg += '\n请安装缺少的组件后重启程序。';
                     alert(errMsg);
                     _syncInProgress = false;
@@ -4714,7 +5312,7 @@ async function loadWarnings() {
                 bar.style.transition = 'stroke-dashoffset 0.5s ease-out, stroke 0.3s ease';
                 bar.setAttribute('stroke-dashoffset', '0');
                 bar.setAttribute('stroke', '#10b981');
-                icon.textContent = '✅';
+                icon.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>';
             } else if (progress === -1) {
                 // 失败：满环红色
                 if (_syncAnimFrame) { cancelAnimationFrame(_syncAnimFrame); _syncAnimFrame = null; }
@@ -4723,13 +5321,13 @@ async function loadWarnings() {
                 bar.style.transition = 'stroke-dashoffset 0.5s ease-out, stroke 0.3s ease';
                 bar.setAttribute('stroke-dashoffset', '0');
                 bar.setAttribute('stroke', '#ef4444');
-                icon.textContent = '⚠️';
+                icon.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>';
             } else {
                 // 进行中：纯JS动画，禁止CSS transition on dashoffset
                 _syncTargetProgress = progress;
                 bar.style.transition = 'stroke 0.3s ease'; // 仅颜色用transition
                 bar.setAttribute('stroke', state.isDark ? '#00d4ff' : '#7c3aed');
-                icon.textContent = '📥';
+                icon.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>';
                 // 启动动画（如果未运行）
                 if (!_syncAnimFrame) {
                     _syncAnimFrame = requestAnimationFrame(_animateSyncRing);
@@ -4750,7 +5348,7 @@ async function loadWarnings() {
                 bar.style.transition = 'none';
                 bar.setAttribute('stroke-dashoffset', _ringCircumference.toFixed(2));
             }
-            if (icon) icon.textContent = '📥';
+            if (icon) icon.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>';
         }
 
         function updateSyncBadge(isoStr) {
@@ -4786,8 +5384,8 @@ async function loadWarnings() {
                 const envCheck = await fetch(CONFIG.API_BASE_URL + '/api/sync/check-env').then(r => r.json()).catch(() => null);
                 if (envCheck && !envCheck.ready) {
                     let errMsg = '环境检测不通过：\n\n';
-                    for (const e of envCheck.errors || []) errMsg += '❌ ' + e + '\n';
-                    for (const w of envCheck.warnings || []) errMsg += '⚠️ ' + w + '\n';
+                    for (const e of envCheck.errors || []) errMsg += '× ' + e + '\n';
+                    for (const w of envCheck.warnings || []) errMsg += '! ' + w + '\n';
                     errMsg += '\n请安装缺少的组件后重启程序。';
                     alert(errMsg);
                     showToast('环境检测未通过，无法启动同步', 'error');
@@ -4932,7 +5530,7 @@ async function loadWarnings() {
             const notesText = document.getElementById('releaseNotesText');
 
             btn.disabled = true;
-            btn.querySelector('.btn-text').textContent = '🔍 检测中...';
+            btn.querySelector('.btn-text').textContent = '检测中...';
 
             try {
                 const data = await API.request('/update/check');
@@ -4956,7 +5554,7 @@ async function loadWarnings() {
                 showToast('检测更新失败: ' + err.message, 'error');
             } finally {
                 btn.disabled = false;
-                btn.querySelector('.btn-text').textContent = '🔍 检测更新';
+                btn.querySelector('.btn-text').textContent = '检测更新';
             }
         }
 
@@ -4969,7 +5567,7 @@ async function loadWarnings() {
 
             const btn = document.getElementById('applyUpdateBtn');
             btn.disabled = true;
-            btn.querySelector('.btn-text').textContent = '⬇️ 更新中...';
+            btn.querySelector('.btn-text').textContent = '更新中...';
 
             try {
                 const res = await API.request('/update/apply', {
@@ -4985,7 +5583,7 @@ async function loadWarnings() {
                 showToast('更新失败: ' + err.message, 'error');
             } finally {
                 btn.disabled = false;
-                btn.querySelector('.btn-text').textContent = '⬇️ 立即更新';
+                btn.querySelector('.btn-text').textContent = '立即更新';
             }
         }
 
@@ -5141,9 +5739,9 @@ async function loadWarnings() {
 
         function clearAIMessages() {
             const container = document.getElementById('aiMessages');
-            container.innerHTML = `
+                container.innerHTML = `
                 <div class="ai-msg ai-msg-bot">
-                    <span class="ai-msg-avatar">🤖</span>
+                    <span class="ai-msg-avatar"><svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M12 2L14.5 9.5L22 12L14.5 14.5L12 22L9.5 14.5L2 12L9.5 9.5Z" fill="currentColor"/></svg></span>
                     <div class="ai-msg-bubble">
                         您好！我是金鹰AI助手，可以帮您分析工单数据、KPI完成率、人员绩效、预警情况等。请问有什么可以帮您？
                     </div>
@@ -5182,7 +5780,7 @@ async function loadWarnings() {
 
         function appendAIMessage(role, content) {
             const container = document.getElementById('aiMessages');
-            const avatar = role === 'user' ? '👤' : '🤖';
+            const avatar = role === 'user' ? '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>' : '<svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M12 2L14.5 9.5L22 12L14.5 14.5L12 22L9.5 14.5L2 12L9.5 9.5Z" fill="currentColor"/></svg>';
             const msgClass = role === 'user' ? 'ai-msg-user' : 'ai-msg-bot';
             const div = document.createElement('div');
             div.className = 'ai-msg ' + msgClass;
@@ -5196,7 +5794,7 @@ async function loadWarnings() {
             const div = document.createElement('div');
             div.className = 'ai-msg ai-msg-bot ai-msg-typing';
             div.id = 'aiTypingMsg';
-            div.innerHTML = `<span class="ai-msg-avatar">🤖</span><div class="ai-msg-bubble">${initialText || '思考中'}<span class="typing-dots">...</span></div>`;
+            div.innerHTML = `<span class="ai-msg-avatar"><svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M12 2L14.5 9.5L22 12L14.5 14.5L12 22L9.5 14.5L2 12L9.5 9.5Z" fill="currentColor"/></svg></span><div class="ai-msg-bubble">${initialText || '思考中'}<span class="typing-dots">...</span></div>`;
             container.appendChild(div);
             container.scrollTop = container.scrollHeight;
         }
@@ -5286,7 +5884,7 @@ async function loadWarnings() {
                 const container = document.getElementById('aiMessages');
                 const div = document.createElement('div');
                 div.className = 'ai-msg ai-msg-bot';
-                div.innerHTML = `<span class="ai-msg-avatar">🤖</span><div class="ai-msg-bubble"></div>`;
+                div.innerHTML = `<span class="ai-msg-avatar"><svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M12 2L14.5 9.5L22 12L14.5 14.5L12 22L9.5 14.5L2 12L9.5 9.5Z" fill="currentColor"/></svg></span><div class="ai-msg-bubble"></div>`;
                 container.appendChild(div);
                 const bubble = div.querySelector('.ai-msg-bubble');
 
@@ -5311,7 +5909,7 @@ async function loadWarnings() {
                                     // 追加新 think 消息
                                     const thinkDiv = document.createElement('div');
                                     thinkDiv.className = 'ai-msg ai-msg-bot ai-msg-think';
-                                    thinkDiv.innerHTML = `<span class="ai-msg-avatar">🤔</span><div class="ai-msg-bubble think-bubble">${escapeHtml(parsed.think)}</div>`;
+                                    thinkDiv.innerHTML = `<span class="ai-msg-avatar"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3" fill="currentColor"/><circle cx="12" cy="5" r="1.5" fill="currentColor"/><circle cx="19" cy="12" r="1.5" fill="currentColor"/><circle cx="12" cy="19" r="1.5" fill="currentColor"/><circle cx="5" cy="12" r="1.5" fill="currentColor"/><line x1="12" y1="9" x2="12" y2="6.5"/><line x1="15" y1="12" x2="17.5" y2="12"/><line x1="12" y1="15" x2="12" y2="17.5"/><line x1="9" y1="12" x2="6.5" y2="12"/></svg></span><div class="ai-msg-bubble think-bubble">${escapeHtml(parsed.think)}</div>`;
                                     container.appendChild(thinkDiv);
                                     container.scrollTop = container.scrollHeight;
                                     thinkMsgCount++;

@@ -29,20 +29,20 @@ def copytree(src: Path, dst: Path, ignore=None):
     shutil.copytree(src, dst, ignore=ignore)
 
 
-def copy_playwright_driver():
-    """将 Playwright 的 Chromium driver 复制到发布包中，
-    使打包后的 exe 在目标机器上无需额外安装 Node.js 即可使用 Playwright。"""
-    import playwright
-    playwright_pkg = Path(playwright.__file__).parent
-    driver_src = playwright_pkg / "driver"
-    driver_dst = RELEASE_PKG / "_internal" / "playwright" / "driver"
-    if driver_src.exists():
-        driver_dst.parent.mkdir(parents=True, exist_ok=True)
-        copytree(driver_src, driver_dst)
-        total = sum(f.stat().st_size for f in driver_dst.rglob("*") if f.is_file())
-        print(f"  已复制 Playwright driver: {total / 1024 / 1024:.1f} MB")
+def clean_chromium_from_dist():
+    """从 dist 中删除 playwright chromium 浏览器（约 1.2GB）。
+    代码使用系统 Chrome（channel="chrome"），不需要这套冗余的浏览器驱动。"""
+    lb_dirs = list(DIST_DIR.rglob(".local-browsers"))
+    if lb_dirs:
+        total_size = sum(
+            sum(f.stat().st_size for f in d.rglob("*") if f.is_file())
+            for d in lb_dirs
+        )
+        for d in lb_dirs:
+            shutil.rmtree(d)
+        print(f"  已删除 chromium（.local-browsers，{total_size / 1024 / 1024:.0f} MB）")
     else:
-        print("  [警告] 未找到 Playwright driver，同步功能可能不可用")
+        print("  .local-browsers 不存在，跳过")
 
 
 def build_release():
@@ -57,23 +57,22 @@ def build_release():
         print(f"  pyinstaller {APP_NAME}.spec")
         sys.exit(1)
 
-    # 1. 创建发布目录
+    # 1. 从 dist 中删除 chromium 浏览器（复制前清理，简单直接）
+    print("\n[1/8] 清理 dist 中的 chromium 浏览器...")
+    clean_chromium_from_dist()
+
+    # 2. 创建发布目录并复制
     if RELEASE_PKG.exists():
         shutil.rmtree(RELEASE_PKG)
     RELEASE_PKG.mkdir(parents=True)
 
-    # 2. 复制 PyInstaller 输出
-    print("\n[0/7] 复制 PyInstaller dist 输出...")
+    print("\n[2/8] 复制 PyInstaller dist 输出...")
     copytree(DIST_DIR, RELEASE_PKG)
     size_mb = sum(f.stat().st_size for f in RELEASE_PKG.rglob("*") if f.is_file()) / 1024 / 1024
-    print(f"  当前大小: {size_mb:.1f} MB (不含 Playwright driver)")
-
-    # 3. 复制 Playwright driver
-    print("\n[1/7] 复制 Playwright driver 到 _internal...")
-    copy_playwright_driver()
+    print(f"  当前大小: {size_mb:.1f} MB")
 
     # 4. 复制数据库（空库模板）
-    print("\n[2/7] 复制数据库...")
+    print("\n[3/8] 复制数据库...")
     db_src = Path("data") / "golden_eagle_kpi.db"
     db_dst = RELEASE_PKG / "data" / "golden_eagle_kpi.db"
     if db_src.exists():
@@ -84,11 +83,11 @@ def build_release():
         print("  [警告] 未找到数据库文件，发布包将不含数据库")
 
     # 5. 创建 data/exports 目录
-    print("\n[3/7] 创建 data/exports 目录...")
+    print("\n[4/8] 创建 data/exports 目录...")
     (RELEASE_PKG / "data" / "exports").mkdir(parents=True, exist_ok=True)
 
     # 6. 创建 CHANGELOG.txt
-    print("\n[4/7] 生成 CHANGELOG.txt...")
+    print("\n[5/8] 生成 CHANGELOG.txt...")
     changelog = RELEASE_PKG / "CHANGELOG.txt"
     changelog.write_text(
         "金鹰工单KPI管理系统 更新日志\n"
@@ -137,7 +136,7 @@ def build_release():
     )
 
     # 7. 创建 README.txt
-    print("\n[5/7] 生成 README.txt...")
+    print("\n[6/8] 生成 README.txt...")
     readme = RELEASE_PKG / "README.txt"
     readme.write_text(
         "金鹰工单KPI管理系统 v0.0.9\n"
@@ -162,7 +161,7 @@ def build_release():
         "  在管理界面中点击 [数据同步] 按钮即可\n"
         "  同步功能需要本机已安装浏览器（优先 Google Chrome）\n"
         "  如果未安装 Chrome，系统会自动使用 Microsoft Edge（Windows自带）\n"
-        "  Node.js 已内置在程序中，无需额外安装\n"
+        "  同步功能依赖本机 Node.js 环境，请确保已安装\n"
         "\n"
         "[目录说明]\n"
         "  金鹰工单KPI.exe     主程序（双击启动）\n"
@@ -178,7 +177,7 @@ def build_release():
     )
 
     # 8. 创建 tools 目录
-    print("\n[6/7] 复制 tools 脚本...")
+    print("\n[7/8] 复制 tools 脚本...")
     tools_src = Path("tools")
     tools_dst = RELEASE_PKG / "tools"
     if tools_src.exists():
@@ -188,7 +187,7 @@ def build_release():
         (tools_dst / "__init__.py").write_text("", encoding="utf-8")
 
     # 9. 打包 ZIP
-    print("\n[7/7] 打包为 ZIP...")
+    print("\n[8/8] 打包为 ZIP...")
     zip_path = RELEASE / f"{APP_NAME}-{VERSION}.zip"
     if zip_path.exists():
         zip_path.unlink()

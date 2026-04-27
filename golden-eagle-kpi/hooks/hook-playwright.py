@@ -1,24 +1,18 @@
 """PyInstaller hook: 排除Playwright自带浏览器（我们用channel="chrome"调用系统Chrome）"""
-from PyInstaller.utils.hooks import collect_data_files
+from PyInstaller.utils.hooks import collect_data_files, collect_submodules
 
-# 只收集playwright的Python数据文件，排除浏览器二进制
+# 收集playwright数据文件，但排除浏览器二进制（.local-browsers）
 datas = []
 for item in collect_data_files('playwright'):
-    # 排除浏览器二进制文件（.local-browsers目录下的chromium/firefox/webkit）
-    if '.local-browsers' not in item[0] and 'driver' not in item[0]:
-        datas.append(item)
-
-# 如果datas为空，至少收集最小必要文件
-if not datas:
-    datas = collect_data_files('playwright', include_py_files=False)
-
-# 过滤掉大文件
-filtered = []
-for src, dst in datas:
-    # 排除浏览器和驱动目录
-    skip_keywords = ['.local-browsers', 'chromium-', 'firefox-', 'webkit-', 'ffmpeg-']
-    if any(kw in src for kw in skip_keywords):
+    src, dst = item
+    # 彻底排除 .local-browsers 浏览器二进制目录
+    if '.local-browsers' in src:
         continue
-    filtered.append((src, dst))
+    datas.append((src, dst))
 
-datas = filtered
+# 确保必要的Python模块被识别
+hiddenimports = collect_submodules('playwright')
+
+# 禁止PyInstaller将playwright/driver下的浏览器二进制打入包（通过排除该模块）
+# 注意： playwright 顶层模块仍会被收集，只是 driver 子目录被排除
+excludedimports = []
