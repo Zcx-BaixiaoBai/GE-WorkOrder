@@ -23,3 +23,6 @@ playwright==1.48.0
 
 # 文件处理
 aiofiles==24.1.0
+
+# HTTP客户端
+httpx==0.28.1

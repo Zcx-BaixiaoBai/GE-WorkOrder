@@ -1,5 +1,5 @@
 # -*- mode: python ; coding: utf-8 -*-
-"""金鹰工单KPI管理系统 v0.0.10 - PyInstaller打包配置
+"""金鹰工单KPI管理系统 v1.0.0 - PyInstaller打包配置
 
 用法:
     cd golden-eagle-kpi
@@ -12,8 +12,12 @@
 """
 import sys
 from pathlib import Path
+from PyInstaller.utils.hooks import collect_submodules, collect_all
 
 PROJECT_ROOT = Path(SPECPATH)
+
+# 收集 requests 及其所有依赖
+_requests_datas, _requests_binaries, _requests_hidden = collect_all('requests')
 
 a = Analysis(
     [str(PROJECT_ROOT / 'launcher.py')],
@@ -26,7 +30,7 @@ a = Analysis(
         (str(PROJECT_ROOT / 'main.py'), '.'),
         # backend目录（自定义项目代码，hiddenimports无法自动包含）
         (str(PROJECT_ROOT / 'backend'), 'backend'),
-    ],
+    ] + _requests_datas,
     hiddenimports=[
         # uvicorn 必须的隐藏导入
         'uvicorn.logging',
@@ -50,12 +54,18 @@ a = Analysis(
         'backend.api.tickets',
         'backend.api.personnel',
         'backend.api.sync',
+        'backend.api.sync_all',
+        'backend.api.sync_wy',
+        'backend.api.sync_ipms',
+        'backend.api.wy',
+        'backend.api.ipms',
         'backend.api.export',
         'backend.api.config',
         'backend.api.websocket',
         'backend.api.search_api',
         'backend.api.ai_chat',
         'backend.api.update',
+    ] + _requests_hidden + [
         'backend.models',
         'backend.models.work_ticket',
         'backend.models.snapshot',
@@ -66,6 +76,8 @@ a = Analysis(
         'backend.models.role_mapping',
         'backend.models.project_name_mapping',
         'backend.models.project_manager',
+        'backend.models.special_plan',
+        'backend.models.ipms_task',
         'backend.services',
         'backend.services.auth_service',
         'backend.services.config_service',
@@ -77,6 +89,8 @@ a = Analysis(
         'backend.scraper',
         'backend.scraper.bi_client',
         'backend.scraper.final_v17_headles',
+        'backend.scraper.wy_crawler',
+        'backend.scraper.ipms_crawler',
         'backend.config',
         'backend.database',
         'backend.seed_data',

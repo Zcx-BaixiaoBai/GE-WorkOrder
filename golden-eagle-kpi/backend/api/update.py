@@ -18,7 +18,7 @@ router = APIRouter(prefix="/api/update", tags=["更新"])
 
 GITEE_OWNER = "Zcx-BaixiaoBai"
 GITEE_REPO = "g-ai"
-CURRENT_VERSION = "v0.0.9"
+CURRENT_VERSION = "v1.0.0"
 
 
 def _load_token() -> str:
@@ -33,24 +33,50 @@ GITEE_TOKEN = _load_token()
 
 
 def get_local_version() -> str:
-    version_file = Path(__file__).parent.parent.parent / "VERSION"
+    """读取本地版本号，优先读 VERSION 文件"""
+    import sys
+    # 1. 项目根目录的 VERSION 文件
+    project_root = Path(__file__).parent.parent.parent
+    version_file = project_root / "VERSION"
     if version_file.exists():
         return version_file.read_text(encoding="utf-8").strip()
+    # 2. frozen 模式：exe 旁边的 VERSION
+    if getattr(sys, 'frozen', False):
+        exe_dir = Path(sys.executable).parent
+        frozen_version = exe_dir / "VERSION"
+        if frozen_version.exists():
+            return frozen_version.read_text(encoding="utf-8").strip()
     return CURRENT_VERSION
+
+
+def _version_key(tag: str) -> tuple:
+    """将 v0.0.10 格式转为可比较的元组 (0, 0, 10)"""
+    import re
+    m = re.match(r'v?(\d+)\.(\d+)\.(\d+)', tag or '')
+    if m:
+        return (int(m.group(1)), int(m.group(2)), int(m.group(3)))
+    return (0, 0, 0)
 
 
 def fetch_gitee_releases():
     """获取 Gitee 最新 release 信息"""
     url = f"https://gitee.com/api/v5/repos/{GITEE_OWNER}/{GITEE_REPO}/releases"
-    headers = {}
-    if GITEE_TOKEN:
-        headers["Authorization"] = f"token {GITEE_TOKEN}"
+    # 公开仓库无需认证；带错误 token 反而 401
+    params = {"per_page": 20, "sort": "created", "direction": "desc"}
+    # 清除可能干扰的代理环境变量
+    proxies = {"http": None, "https": None}
     try:
-        resp = requests.get(url, headers=headers, timeout=10)
+        resp = requests.get(url, params=params, timeout=30, proxies=proxies)
         if resp.status_code == 200:
-            return resp.json()
-    except Exception:
-        pass
+            releases = resp.json()
+            if releases:
+                # 按版本号排序，取最大的
+                releases.sort(key=lambda r: _version_key(r.get("tag_name", "")), reverse=True)
+            return releases
+        else:
+            print(f"[update] Gitee API HTTP {resp.status_code}: {resp.text[:200]}")
+    except Exception as e:
+        print(f"[update] Gitee API 请求失败: {e}")
     return []
 
 
@@ -91,10 +117,18 @@ def check_update():
     notes = (latest.get("body") or "")[:500]
     assets = latest.get("assets", []) or []
     zip_url = ""
+    # 优先找发布包 ZIP（文件名含 "KPI"），其次任意 .zip
     for a in assets:
-        if a.get("name", "").endswith(".zip"):
+        name = a.get("name", "")
+        if "KPI" in name and name.endswith(".zip"):
             zip_url = a.get("browser_download_url", "")
             break
+    if not zip_url:
+        for a in assets:
+            name = a.get("name", "")
+            if name.endswith(".zip"):
+                zip_url = a.get("browser_download_url", "")
+                break
 
     return CheckUpdateResponse(
         current_version=local_ver,
@@ -119,8 +153,8 @@ def apply_update(req: ApplyUpdateRequest):
         raise HTTPException(status_code=400, detail="缺少 download_url")
 
     try:
-        # 下载 zip
-        resp = requests.get(download_url, timeout=60, stream=True)
+        # 下载 zip（禁用代理避免干扰）
+        resp = requests.get(download_url, timeout=120, stream=True, proxies={"http": None, "https": None})
         if resp.status_code != 200:
             raise HTTPException(status_code=502, detail=f"下载失败，HTTP {resp.status_code}")
 

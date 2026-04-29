@@ -100,6 +100,11 @@ class SyncService:
             _sync_status.update({"is_syncing": False, "progress": 0, "message": f"Playwright检查失败: {e}", "last_sync_result": "failed"})
             return
 
+        # 标记同步开始（贯穿整个任务生命周期，finally中重置为False）
+        _sync_status["is_syncing"] = True
+        _sync_status["progress"] = 0
+        _sync_status["last_sync_result"] = None
+
         db = get_session_local()()
         try:
             sync_log = SyncLog(sync_type="full", project_id=project_id, status="running", started_at=datetime.now())
@@ -111,10 +116,29 @@ class SyncService:
             _sync_status["progress"] = 2
 
             client = BiClient(account, password)
-            files = await client.fetch_all()
 
-            tickets_file = files[0] if len(files) > 0 else None
-            snapshots_file = files[1] if len(files) > 1 else None
+            # 总超时保护：整个同步任务最多5分钟
+            async def _fetch_with_timeout():
+                return await asyncio.wait_for(client.fetch_all(), timeout=300)
+
+            files = await _fetch_with_timeout()
+
+            if not files or len(files) == 0:
+                raise RuntimeError("未下载到任何Excel文件，请检查BI系统是否可访问")
+
+            # 检查下载的文件是否有效（非空文件）
+            valid_files = []
+            for f in files:
+                if f and Path(f).exists() and os.path.getsize(f) > 10000:
+                    valid_files.append(f)
+                else:
+                    print(f"[同步] 文件无效或过小，跳过: {f}")
+
+            if not valid_files:
+                raise RuntimeError("下载的Excel文件均为空或损坏，同步终止")
+
+            tickets_file = valid_files[0]
+            snapshots_file = valid_files[1] if len(valid_files) > 1 else None
 
             if tickets_file:
                 _sync_status["message"] = f"工单明细: {Path(tickets_file).name}"
@@ -123,6 +147,7 @@ class SyncService:
             _sync_status["progress"] = 45
 
             # === 阶段2: 并发入库 (45-90%) ===
+            # 工单+随手拍并发执行，各自独立DB session，避免SQLite WAL锁冲突
             _sync_status["message"] = "正在入库数据..."
             _sync_status["progress"] = 48
 
@@ -133,7 +158,6 @@ class SyncService:
                 nonlocal ticket_result
                 if not tickets_file:
                     return
-                # 用独立session避免SQLite锁冲突
                 tdb = get_session_local()()
                 try:
                     ticket_result = SyncService._import_tickets_from_excel(
@@ -156,16 +180,15 @@ class SyncService:
                 finally:
                     sdb.close()
 
-            # 用线程池并发入库
             loop = asyncio.get_event_loop()
             with ThreadPoolExecutor(max_workers=2) as executor:
-                t_futures = []
+                futures = []
                 if tickets_file:
-                    t_futures.append(loop.run_in_executor(executor, _import_tickets))
+                    futures.append(loop.run_in_executor(executor, _import_tickets))
                 if snapshots_file:
-                    t_futures.append(loop.run_in_executor(executor, _import_snapshots))
-                if t_futures:
-                    await asyncio.gather(*t_futures)
+                    futures.append(loop.run_in_executor(executor, _import_snapshots))
+                if futures:
+                    await asyncio.gather(*futures)
 
             _sync_status["progress"] = 90
 
@@ -195,19 +218,23 @@ class SyncService:
                     log.error_message = str(e)
                     db.commit()
         finally:
-            db.close()
+            try:
+                db.close()
+            except Exception:
+                pass
             _sync_status["is_syncing"] = False
             _sync_status["current_task"] = None
-            asyncio.get_event_loop().call_later(5, _reset_sync_progress)
+            try:
+                asyncio.get_event_loop().call_later(5, _reset_sync_progress)
+            except Exception:
+                pass
 
     @staticmethod
     def _import_tickets_from_excel(file_path: str, batch_id: int, db: Session,
                                     progress_cb=None) -> dict:
-        """工单明细导入 - 基于 v0.0.8 稳定版"""
+        """工单明细导入 - 优化版：单遍流式读取 + 大batch"""
         import openpyxl
         print(f"[同步] 读取工单明细: {Path(file_path).name}")
-        wb = openpyxl.load_workbook(file_path, read_only=True, data_only=True)
-        ws = wb.active
 
         mappings = db.query(ProjectNameMapping).all()
         name_map = {m.bi_name: m.standard_name for m in mappings}
@@ -219,14 +246,12 @@ class SyncService:
         print(f"[同步] 已清除旧工单明细 {deleted} 条")
         if progress_cb: progress_cb(0.05)
 
-        # 先数总行
-        total_rows = sum(1 for _ in ws.iter_rows(min_row=2, values_only=True))
-        wb.close()
         wb = openpyxl.load_workbook(file_path, read_only=True, data_only=True)
         ws = wb.active
 
         imported = skipped = 0
         batch = []
+        report_interval = 1000
         for row_idx, row in enumerate(ws.iter_rows(min_row=2, values_only=True), start=2):
             try:
                 if not row or len(row) < 10:
@@ -270,9 +295,9 @@ class SyncService:
                 imported += 1
                 if len(batch) >= 1000:
                     db.bulk_save_objects(batch); db.commit(); batch.clear()
-                    if progress_cb and total_rows > 0:
-                        progress_cb(0.05 + 0.9 * (imported + skipped) / total_rows)
-                    print(f"  ...工单已导入 {imported} 条")
+                    if progress_cb: progress_cb(0.05 + 0.90 * imported / max(imported + skipped, 1))
+                    if imported % report_interval == 0:
+                        print(f"  ...工单已导入 {imported} 条")
             except Exception as e:
                 skipped += 1
                 if skipped <= 10: print(f"  行{row_idx}异常: {e}")
@@ -286,30 +311,31 @@ class SyncService:
     @staticmethod
     def _import_snapshots_from_excel(file_path: str, batch_id: int, db: Session,
                                       progress_cb=None) -> dict:
-        """随手拍导入 - 使用普通模式处理合并单元格
+        """随手拍导入 - 优化版：read_only读取数据 + 普通模式读merged_cells
 
-        v0.0.8 用 read_only=True，但合并单元格成员行值为None。
-        改用普通模式读取，预扫描构建 merged cell span map，
-        然后遍历时按 span 展开写入。
+        性能优化：
+        - 用普通模式只读 merged_cells（不读数据），构建span map
+        - 用 read_only 模式流式读取数据行，内存占用低
+        - 合并单元格值从span map中查找
+        - batch_size 5000，减少commit次数
         """
         import openpyxl
         print(f"[同步] 读取随手拍: {Path(file_path).name}")
 
-        # 普通模式（非read_only）读取，支持获取 merged_cells
-        wb = openpyxl.load_workbook(file_path, data_only=True)
-        ws = wb.active
-
-        # 构建合并单元格 span map: {(row, col): (value, end_row)}
-        # 合并单元格的值只存储在左上角，其他位置为None
-        merged_spans = {}  # (row, col) -> (top_left_row, top_left_col)
-        for merged_range in ws.merged_cells.ranges:
+        # Step 1: 普通模式只读 merged_cells 范围，构建 span map
+        print("[同步] 扫描合并单元格...")
+        wb_meta = openpyxl.load_workbook(file_path, data_only=True)
+        ws_meta = wb_meta.active
+        merged_spans = {}  # (row, col) -> top_left_value
+        for merged_range in ws_meta.merged_cells.ranges:
             top_row, bottom_row = merged_range.min_row, merged_range.max_row
             left_col, right_col = merged_range.min_col, merged_range.max_col
-            top_left_val = ws.cell(row=top_row, column=left_col).value
+            top_left_val = ws_meta.cell(row=top_row, column=left_col).value
             for r in range(top_row, bottom_row + 1):
                 for c in range(left_col, right_col + 1):
                     if (r, c) != (top_row, left_col):
-                        merged_spans[(r, c)] = (top_row, left_col, top_left_val)
+                        merged_spans[(r, c)] = top_left_val
+        wb_meta.close()
 
         mappings = db.query(ProjectNameMapping).all()
         name_map = {m.bi_name: m.standard_name for m in mappings}
@@ -328,17 +354,24 @@ class SyncService:
         print(f"[同步] 已清除旧随手拍: snapshots={snap_deleted}")
         if progress_cb: progress_cb(0.05)
 
-        total_rows = ws.max_row - 1 if ws.max_row else 0
+        # Step 2: read_only 流式读取数据
+        print("[同步] 开始流式导入随手拍...")
+        wb = openpyxl.load_workbook(file_path, read_only=True, data_only=True)
+        ws = wb.active
+
         imported = skipped = 0
         snap_batch = []
+        row_count = 0
+        report_interval = 1000  # 每1000条报告一次（更频繁更新进度）
 
-        for row_idx in range(2, ws.max_row + 1):
+        for row_idx, row in enumerate(ws.iter_rows(min_row=2, values_only=True), start=2):
+            row_count += 1
             try:
                 def _cell(col):
                     """获取单元格值，如果是合并单元格成员则返回左上角值"""
-                    val = ws.cell(row=row_idx, column=col).value
+                    val = row[col - 1] if col - 1 < len(row) else None
                     if val is None and (row_idx, col) in merged_spans:
-                        _, _, val = merged_spans[(row_idx, col)]
+                        val = merged_spans[(row_idx, col)]
                     return val
 
                 if _cell(1) is None and _cell(2) is None:
@@ -386,9 +419,10 @@ class SyncService:
                 imported += 1
                 if len(snap_batch) >= 1000:
                     db.bulk_save_objects(snap_batch); db.commit(); snap_batch.clear()
-                    if progress_cb and total_rows > 0:
-                        progress_cb(0.05 + 0.9 * (row_idx - 1) / total_rows)
-                    print(f"  ...随手拍已导入 {imported} 条")
+                    if progress_cb:
+                        progress_cb(0.05 + 0.9 * imported / max(imported + skipped, max(row_count, 1)))
+                    if imported % report_interval == 0:
+                        print(f"  ...随手拍已导入 {imported} 条")
             except Exception as e:
                 skipped += 1
                 if skipped <= 10: print(f"  行{row_idx}异常: {e}")

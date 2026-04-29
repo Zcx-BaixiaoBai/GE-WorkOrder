@@ -96,45 +96,38 @@ def sync_ipms(request: SyncIPMSRequest = None, db: Session = Depends(get_db)):
                 session.query(IPMSTask).delete()
                 session.commit()
 
-                for item in patrol_data:
-                    session.add(IPMSTask(
-                        task_id=str(item.get("taskId", "")),
-                        task_type="patrol",
-                        project_id=str(item.get("projectId", "")),
-                        project_name=str(item.get("projectName", "")),
-                        task_name=str(item.get("patrolRuleName", "")),
-                        address_name=str(item.get("addressName", "")),
-                        sys_name=str(item.get("sysName", "")),
-                        user_id=str(item.get("userId", "")),
-                        user_name=str(item.get("userName", "")),
-                        executor_name=str(item.get("xUserName", "")),
-                        start_time=_parse_datetime(item.get("fullStartDate")),
-                        end_time=_parse_datetime(item.get("fullEndDate")),
-                        submit_time=_parse_datetime(item.get("submitDate")),
-                        working_time=int(item.get("workingTime") or 0),
-                        task_state=int(item.get("taskState") or 0),
-                        task_state_name=str(item.get("taskStateName", "")),
-                    ))
+                # 分批写入（bulk_save_objects 性能更好）
+                def _add_batch(data_list, task_type):
+                    batch = []
+                    for item in data_list:
+                        batch.append(IPMSTask(
+                            task_id=str(item.get("taskId", "")),
+                            task_type=task_type,
+                            project_id=str(item.get("projectId", "")),
+                            project_name=str(item.get("projectName", "")),
+                            task_name=str(item.get("patrolRuleName", "")),
+                            address_name=str(item.get("addressName", "")),
+                            sys_name=str(item.get("sysName", "")),
+                            user_id=str(item.get("userId", "")),
+                            user_name=str(item.get("userName", "")),
+                            executor_name=str(item.get("xUserName", "")),
+                            start_time=_parse_datetime(item.get("fullStartDate")),
+                            end_time=_parse_datetime(item.get("fullEndDate")),
+                            submit_time=_parse_datetime(item.get("submitDate")),
+                            working_time=int(item.get("workingTime") or 0),
+                            task_state=int(item.get("taskState") or 0),
+                            task_state_name=str(item.get("taskStateName", "")),
+                        ))
+                        if len(batch) >= 500:
+                            session.bulk_save_objects(batch)
+                            session.commit()
+                            batch.clear()
+                    if batch:
+                        session.bulk_save_objects(batch)
+                        session.commit()
 
-                for item in maintain_data:
-                    session.add(IPMSTask(
-                        task_id=str(item.get("taskId", "")),
-                        task_type="maintain",
-                        project_id=str(item.get("projectId", "")),
-                        project_name=str(item.get("projectName", "")),
-                        task_name=str(item.get("patrolRuleName", "")),
-                        address_name=str(item.get("addressName", "")),
-                        sys_name=str(item.get("sysName", "")),
-                        user_id=str(item.get("userId", "")),
-                        user_name=str(item.get("userName", "")),
-                        executor_name=str(item.get("xUserName", "")),
-                        start_time=_parse_datetime(item.get("fullStartDate")),
-                        end_time=_parse_datetime(item.get("fullEndDate")),
-                        submit_time=_parse_datetime(item.get("submitDate")),
-                        working_time=int(item.get("workingTime") or 0),
-                        task_state=int(item.get("taskState") or 0),
-                        task_state_name=str(item.get("taskStateName", "")),
-                    ))
+                _add_batch(patrol_data, "patrol")
+                _add_batch(maintain_data, "maintain")
 
                 session.commit()
                 total = total_patrol + total_maintain

@@ -38,7 +38,8 @@ if getattr(sys, 'frozen', False):
             self._original = original
             self._log_file = log_file
         def write(self, msg):
-            self._original.write(msg)
+            if self._original is not None:
+                self._original.write(msg)
             if msg and msg.strip():
                 with open(self._log_file, "a", encoding="utf-8") as f:
                     import datetime
@@ -47,9 +48,12 @@ if getattr(sys, 'frozen', False):
                     if not msg.endswith("\n"):
                         f.write("\n")
         def flush(self):
-            self._original.flush()
+            if self._original is not None:
+                self._original.flush()
         def __getattr__(self, name):
             # 代理所有其他属性（isatty, encoding等）给原始stdout
+            if self._original is None:
+                raise AttributeError(name)
             return getattr(self._original, name)
     sys.stdout = _TeeToLog(_original_stdout, _log_file)
     sys.stderr = _TeeToLog(_original_stderr, _log_file)
@@ -115,6 +119,9 @@ def create_app() -> FastAPI:
     from backend.api.update import router as update_router
     from backend.api.sync_wy import router as sync_wy_router
     from backend.api.sync_ipms import router as sync_ipms_router
+    from backend.api.sync_all import router as sync_all_router
+    from backend.api.wy import router as wy_router
+    from backend.api.ipms import router as ipms_router
 
     app.include_router(auth_router)
     app.include_router(stats_router)
@@ -129,6 +136,9 @@ def create_app() -> FastAPI:
     app.include_router(update_router)
     app.include_router(sync_wy_router)
     app.include_router(sync_ipms_router)
+    app.include_router(sync_all_router)
+    app.include_router(wy_router)
+    app.include_router(ipms_router)
 
     return app
 

@@ -73,8 +73,10 @@ def sync_wy(request: SyncWYRequest = None, db: Session = Depends(get_db)):
                 session.query(SpecialPlan).delete()
                 session.commit()
 
+                # 分批写入（bulk_save_objects 性能更好）
+                batch = []
                 for item in data:
-                    sp = SpecialPlan(
+                    batch.append(SpecialPlan(
                         project_code=str(item.get("项目编码", "")),
                         project_name=str(item.get("项目名称", "")),
                         special_id=str(item.get("special_id", "")),
@@ -102,9 +104,15 @@ def sync_wy(request: SyncWYRequest = None, db: Session = Depends(get_db)):
                         check_standard=str(item.get("check_standard", "")),
                         remark=str(item.get("remark", "")),
                         attach_count=int(item.get("attach_count") or 0),
-                    )
-                    session.add(sp)
-                session.commit()
+                    ))
+                    if len(batch) >= 200:
+                        session.bulk_save_objects(batch)
+                        session.commit()
+                        batch.clear()
+                if batch:
+                    session.bulk_save_objects(batch)
+                    session.commit()
+
                 _wy_sync_status["message"] = f"完成，共 {len(data)} 条"
                 _wy_sync_status["last_result"] = f"success: {len(data)} 条"
             except Exception as e:

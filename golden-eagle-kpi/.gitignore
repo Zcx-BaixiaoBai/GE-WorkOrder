@@ -1,0 +1,36 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+venv/
+venv311/
+.venv/
+
+# Build
+build/
+dist/
+*.spec
+*.pyc
+
+# Releases & data
+releases/
+data/downloads/
+data/exports/
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+
+# Logs
+*.log
+logs/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Node
+node_modules/
+
+# WorkBuddy
+.workbuddy/

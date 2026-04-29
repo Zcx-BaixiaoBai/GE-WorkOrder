@@ -70,13 +70,12 @@ class BiClient:
                             downloaded_files.append(file_path)
 
                 return downloaded_files
-            except Exception as e:
-                print(f"[爬虫] 抓取异常: {e}")
-                raise
+            finally:
+                await browser.close()
 
     async def fetch_tickets(self) -> Optional[str]:
         """仅抓取工单明细表，返回Excel文件路径"""
-        async with self._create_browser() as (_, ctx):
+        async with self._create_browser() as (browser, ctx):
             try:
                 page = await self._login(ctx)
                 bi_page = await self._enter_bi(page)
@@ -88,12 +87,12 @@ class BiClient:
                     await self._fill_dates(bi_page, "工单明细查询表")
                     return await self._export_excel(bi_page, "工单明细查询表")
                 return None
-            except Exception:
-                raise
+            finally:
+                await browser.close()
 
     async def fetch_snapshots(self) -> Optional[str]:
         """仅抓取随手拍表，返回Excel文件路径"""
-        async with self._create_browser() as (_, ctx):
+        async with self._create_browser() as (browser, ctx):
             try:
                 page = await self._login(ctx)
                 bi_page = await self._enter_bi(page)
@@ -105,65 +104,66 @@ class BiClient:
                     await self._fill_dates(bi_page, "随手拍工单统计明细表", wait_longer=True)
                     return await self._export_excel(bi_page, "随手拍工单统计明细表", wait_longer=True)
                 return None
-            except Exception:
-                raise
+            finally:
+                await browser.close()
 
     # ============================================================
     # 内部方法
     # ============================================================
 
-    def _detect_browser_path(self) -> tuple[str | None, str | None]:
-        """检测可用的浏览器路径，返回 (channel, executable_path)
-        
-        优先使用 executable_path 明确指定浏览器位置，
-        避免 Playwright 的 channel 模式在不同环境下路径不一致的问题。
-        """
-        import shutil, winreg
-        from pathlib import Path
-
-        # Chrome 候选路径（按优先级排序）
-        chrome_paths = [
-            r"C:\Program Files\Google\Chrome\Application\chrome.exe",
-            r"C:\Program Files (x86)\Google\Chrome\Application\chrome.exe",
+    def _detect_browser_channel(self) -> str | None:
+        """检测可用的浏览器，优先 Chrome，降级 Edge"""
+        import shutil
+        # Chrome 候选
+        chrome_candidates = [
             shutil.which("chrome"),
             shutil.which("google-chrome"),
+            r"C:\Program Files\Google\Chrome\Application\chrome.exe",
+            r"C:\Program Files (x86)\Google\Chrome\Application\chrome.exe",
         ]
-        # 注册表 HKLM Chrome
-        try:
-            key = winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE, r"SOFTWARE\Microsoft\Windows\CurrentVersion\App Paths\chrome.exe")
-            path, _ = winreg.QueryValueEx(key, "")
-            winreg.CloseKey(key)
-            if path:
-                chrome_paths.append(path)
-        except Exception:
-            pass
-        # 注册表 HKCU Chrome
-        try:
-            key = winreg.OpenKey(winreg.HKEY_CURRENT_USER, r"SOFTWARE\Microsoft\Windows\CurrentVersion\App Paths\chrome.exe")
-            path, _ = winreg.QueryValueEx(key, "")
-            winreg.CloseKey(key)
-            if path:
-                chrome_paths.append(path)
-        except Exception:
-            pass
-
-        for p in chrome_paths:
+        for p in chrome_candidates:
             if p and Path(p).exists():
-                return ("chrome", str(Path(p).resolve()))
+                return "chrome"
 
-        # Edge 候选路径
-        edge_paths = [
+        # Edge 候选（Windows 自带）
+        edge_candidates = [
+            shutil.which("msedge"),
             r"C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe",
             r"C:\Program Files\Microsoft\Edge\Application\msedge.exe",
-            shutil.which("msedge"),
             os.path.expandvars(r"%PROGRAMFILES(x86)%\Microsoft\Edge\Application\msedge.exe"),
             os.path.expandvars(r"%PROGRAMFILES%\Microsoft\Edge\Application\msedge.exe"),
         ]
-        for p in edge_paths:
+        for p in edge_candidates:
             if p and Path(p).exists():
-                return ("msedge", str(Path(p).resolve()))
+                return "msedge"
 
-        return (None, None)
+        # 注册表兜底
+        try:
+            import winreg
+            # Chrome 注册表
+            for reg_root in [winreg.HKEY_LOCAL_MACHINE, winreg.HKEY_CURRENT_USER]:
+                try:
+                    key = winreg.OpenKey(reg_root, r"SOFTWARE\Microsoft\Windows\CurrentVersion\App Paths\chrome.exe")
+                    path, _ = winreg.QueryValueEx(key, "")
+                    winreg.CloseKey(key)
+                    if path and Path(path).exists():
+                        return "chrome"
+                except (FileNotFoundError, OSError):
+                    continue
+            # Edge 注册表
+            for reg_root in [winreg.HKEY_LOCAL_MACHINE, winreg.HKEY_CURRENT_USER]:
+                try:
+                    key = winreg.OpenKey(reg_root, r"SOFTWARE\Microsoft\Windows\CurrentVersion\App Paths\msedge.exe")
+                    path, _ = winreg.QueryValueEx(key, "")
+                    winreg.CloseKey(key)
+                    if path and Path(path).exists():
+                        return "msedge"
+                except (FileNotFoundError, OSError):
+                    continue
+        except Exception:
+            pass
+
+        return None
 
     def _create_browser(self):
         """创建浏览器上下文（异步上下文管理器）"""
@@ -180,7 +180,7 @@ class BiClient:
                 self.pw = await async_playwright().start()
 
                 # 检测可用浏览器：优先 Chrome，降级 Edge
-                channel, executable_path = self.client._detect_browser_path()
+                channel = self.client._detect_browser_channel()
                 if not channel:
                     raise RuntimeError(
                         "未检测到浏览器。需要 Google Chrome 或 Microsoft Edge。\n"
@@ -190,14 +190,11 @@ class BiClient:
                     )
 
                 browser_name = "Chrome" if channel == "chrome" else "Microsoft Edge"
-                print(f"[爬虫] 使用浏览器: {browser_name} ({executable_path})")
+                print(f"[爬虫] 使用浏览器: {browser_name} (channel={channel})")
 
-                # 使用系统浏览器（只用 executable_path，不指定 channel）
-                # channel 模式会让 Playwright 按预设路径搜索，与实际路径冲突
-                # executable_path 直接指定浏览器位置，最可靠
                 self.browser = await self.pw.chromium.launch(
-                    executable_path=executable_path,
                     headless=True,
+                    channel=channel,
                     args=[
                         "--no-sandbox",
                         "--disable-blink-features=AutomationControlled",
@@ -218,26 +215,12 @@ class BiClient:
                 return self.browser, self.ctx
 
             async def __aexit__(self, *args):
-                # 捕获 TargetClosedError：浏览器在下载完成后可能已被系统关闭
-                # （尤其是在下载大文件后），不影响已下载的文件
-                from playwright._impl._errors import TargetClosedError
-                try:
-                    if self.ctx:
-                        await self.ctx.close()
-                except TargetClosedError:
-                    print("[爬虫] 浏览器上下文已关闭，跳过清理")
-                except Exception as e:
-                    print(f"[爬虫] 清理上下文异常（非致命）: {e}")
-                try:
-                    if self.browser:
-                        await self.browser.close()
-                except Exception as e:
-                    print(f"[爬虫] 关闭浏览器异常（非致命）: {e}")
-                try:
-                    if self.pw:
-                        await self.pw.stop()
-                except Exception as e:
-                    print(f"[爬虫] 停止playwright异常（非致命）: {e}")
+                if self.ctx:
+                    await self.ctx.close()
+                if self.browser:
+                    await self.browser.close()
+                if self.pw:
+                    await self.pw.stop()
 
         return BrowserContext(self)
 
