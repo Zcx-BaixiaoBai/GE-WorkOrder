@@ -53,6 +53,104 @@
             --text-secondary: #8A8A95;
         }
         
+        /* ========== 大屏模式 (TV Mode) ========== */
+        /* ========== 下拉菜单打开时锁定页面滚动 ========== */
+        body.select-open {
+            overflow: hidden !important;
+            position: relative;
+        }
+        body.select-open #appContainer {
+            overflow: hidden;
+            height: 100vh;
+        }
+
+        /* ========== TV模式 - 浅色 (无dark时) ========== */
+        body.tv-mode:not(.dark) {
+            background: #E8E8EC;
+        }
+        body.tv-mode:not(.dark) .topbar {
+            background: #E8E8EC !important;
+            box-shadow: none !important;
+            border: none !important;
+        }
+        body.tv-mode:not(.dark) .glass {
+            box-shadow: 8px 8px 16px #C5C5CF, -4px -4px 12px #FFFFFF !important;
+        }
+        body.tv-mode:not(.dark) .card {
+            box-shadow: 8px 8px 16px #C5C5CF, -4px -4px 12px #FFFFFF !important;
+        }
+
+        /* ========== TV模式 - 深色 (有dark时) ========== */
+        body.tv-mode.dark {
+            background: #0a0a14;
+        }
+        body.tv-mode.dark .topbar {
+            background: #0a0a14 !important;
+            box-shadow: none !important;
+            border: none !important;
+        }
+        body.tv-mode.dark .glass {
+            box-shadow: 8px 8px 16px rgba(0,0,0,0.5) !important;
+        }
+        body.tv-mode.dark .card {
+            box-shadow: 8px 8px 16px rgba(0,0,0,0.5) !important;
+        }
+
+        /* ========== TV模式通用 ========== */
+        body.tv-mode .main {
+            max-width: 100%;
+            padding: 60px 40px 20px;
+        }
+        body.tv-mode .kpi-grid {
+            gap: 32px;
+        }
+        body.tv-mode .kpi-card {
+            padding: 28px;
+        }
+        body.tv-mode .kpi-value {
+            font-size: 48px;
+        }
+        body.tv-mode .kpi-label {
+            font-size: 18px;
+        }
+        body.tv-mode .chart-container {
+            height: 320px;
+        }
+        body.tv-mode .card {
+            border-radius: 20px;
+        }
+        body.tv-mode .nav-btn {
+            font-size: 16px;
+            padding: 8px 16px;
+        }
+        body.tv-mode .icon-btn {
+            width: 48px;
+            height: 48px;
+        }
+        body.tv-mode .icon-btn svg {
+            width: 24px;
+            height: 24px;
+        }
+        body.tv-mode h1, body.tv-mode h2, body.tv-mode h3 {
+            letter-spacing: 2px;
+        }
+        body.tv-mode .page {
+            font-size: 16px;
+        }
+        body.tv-mode .table th, body.tv-mode .table td {
+            padding: 14px 16px;
+            font-size: 15px;
+        }
+        body.tv-mode .db-header {
+            margin-bottom: 16px;
+        }
+        body.tv-mode #planOverviewCards {
+            gap: 24px;
+        }
+        body.tv-mode #planOverviewCards .card {
+            padding: 20px 24px;
+        }
+        
         body {
             margin: 0;
             padding: 0;
@@ -475,26 +573,48 @@
         .multi-select-arrow { position: absolute; right: 20px; top: 50%; transform: translateY(-50%); width: 12px; height: 8px; transition: transform 0.3s ease; pointer-events: none; }
         .multi-select-trigger.active .multi-select-arrow { transform: translateY(-50%) rotate(180deg); }
         .multi-select-panel {
-            position: fixed; width: 280px;
+            position: fixed; width: 320px;
             background: #F0F0F3;
             border: 1px solid #D1D1D6;
             border-bottom-color: #C5C5CF;
             border-radius: 22px;
-            padding: 12px;
+            padding: 10px;
             box-shadow: 8px 8px 16px #C5C5CF, -8px -8px 16px #FFFFFF;
             z-index: 9999; opacity: 0; visibility: hidden;
-            transform: translateY(-10px) scale(0.96);
-            transition: all 0.3s var(--ease-out-expo);
-            max-height: 320px; overflow-y: auto;
+            margin-top: -8px;
+            transition: opacity 0.25s ease, visibility 0.25s ease, margin-top 0.25s ease;
+            overflow: hidden;
         }
-        .multi-select-panel.show { display: flex; flex-direction: column; opacity: 1; visibility: visible; transform: translateY(0) scale(1); }
-        .multi-select-item { padding: 10px 14px; border-radius: 12px; cursor: pointer; font-size: 14px; font-weight: 500;
-            color: var(--text-primary); transition: all 0.2s ease; display: flex; align-items: center; gap: 10px;
-            user-select: none; }
+        body.dark .multi-select-panel {
+            background: inherit;
+        }
+        .multi-select-panel.show { display: flex; flex-direction: column; opacity: 1; visibility: visible; margin-top: 0; overflow: visible; }
+        .multi-select-options-scroll {
+            max-height: 260px;
+            overflow-y: auto;
+            flex: 1;
+            min-width: 0;
+        }
+        .multi-select-item { 
+            padding: 10px 14px; 
+            border-radius: 12px; 
+            cursor: pointer; 
+            font-size: 14px; 
+            font-weight: 500;
+            color: var(--text-primary); 
+            transition: all 0.2s ease; 
+            display: flex; 
+            align-items: center; 
+            white-space: nowrap;
+            user-select: none; 
+            margin-bottom: 2px;
+            flex-shrink: 0;
+        }
+        .multi-select-item:last-child { margin-bottom: 0; }
         .multi-select-item:hover { background: #E6E0F0; }
         .multi-select-item.selected { background: #DDD8E8; color: var(--accent-purple); font-weight: 600; }
-        .multi-select-item.selected::before { content: ''; display: inline-block; width: 10px; height: 6px; border-left: 2px solid currentColor; border-bottom: 2px solid currentColor; transform: rotate(-45deg); margin-right: 4px; vertical-align: 2px; }
-        .multi-select-footer { padding: 8px 10px 4px; border-top: 1px solid #D1D1D6; margin-top: 4px; display: flex; gap: 8px; }
+        .multi-select-item.selected::before { content: '✓'; font-size: 13px; font-weight: 700; width: 18px; flex-shrink: 0; text-align: center; margin-right: 6px; display: inline-block; }
+        .multi-select-footer { padding: 8px 10px 4px; border-top: 1px solid #D1D1D6; margin-top: 4px; display: flex; gap: 8px; position: sticky; bottom: 0; background: inherit; z-index: 1; }
         .multi-select-footer-btn { flex: 1; padding: 7px; border-radius: 10px; border: none; font-size: 12px; font-weight: 600; cursor: pointer; transition: all 0.2s; }
         .multi-select-confirm { background: var(--accent-purple); color: white; border: 1px solid #7B5FBF; }
         .multi-select-confirm:hover { background: #6A4FA8; }
@@ -504,6 +624,8 @@
         body.dark .multi-select-panel { background: #252530; border-color: #2A2A38; box-shadow: 8px 8px 16px #13131A, -8px -8px 16px #252530; }
         body.dark .multi-select-item { color: #E8E8EC; }
         body.dark .multi-select-item.selected { color: #a78bfa; }
+        body.dark .multi-select-options-scroll { background: inherit; }
+        body.dark .multi-select-footer { background: #252530; border-top-color: #2A2A38; }
 
         body.dark .multi-select-clear { background: #3A2020; color: #f87171; border-color: #4A3030; }
         body.dark .multi-select-clear:hover { background: #4A2828; }
@@ -550,6 +672,23 @@
             border-color: #2A2A38;
             box-shadow: inset 0 1px 0 rgba(255,255,255,0.04), 3px 3px 6px #13131A, -3px -3px 6px #252530;
         }
+        /* 全局自定义下拉选项样式 */
+        .custom-select-options {
+            border-radius: 16px;
+            padding: 10px;
+            min-width: 160px;
+            width: auto !important;
+            max-width: 360px;
+            background: #F0F0F3;
+            border: 1px solid #D1D1D6;
+            border-bottom-color: #C5C5CF;
+            box-shadow: 8px 8px 16px #C5C5CF, -8px -8px 16px #FFFFFF;
+        }
+        body.dark .custom-select-options {
+            background: #252530;
+            border-color: #2A2A38;
+            box-shadow: 8px 8px 16px #13131A, -8px -8px 16px #252530;
+        }
         #plan .custom-select-options {
             border-radius: 16px;
             padding: 10px;
@@ -565,6 +704,30 @@
             background: #252530;
             border-color: #2A2A38;
             box-shadow: 8px 8px 16px #13131A, -8px -8px 16px #252530;
+        }
+        /* 全局下拉选项项样式 */
+        .custom-select-option {
+            padding: 10px 16px;
+            font-size: 13px;
+            font-weight: 500;
+            border-radius: 10px;
+            white-space: nowrap;
+            cursor: pointer;
+            transition: background 0.15s ease;
+        }
+        .custom-select-option:hover {
+            background: rgba(139, 92, 246, 0.1);
+        }
+        .custom-select-option.selected {
+            background: rgba(139, 92, 246, 0.15);
+            color: var(--accent-purple);
+            font-weight: 600;
+        }
+        body.dark .custom-select-option {
+            color: #E8E8EC;
+        }
+        body.dark .custom-select-option.selected {
+            color: #a78bfa;
         }
         #plan .custom-select-option {
             padding: 10px 16px;
@@ -1460,7 +1623,7 @@
         <header class="topbar">
             <div class="logo">
                 <div class="logo-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="8" y1="12" x2="16" y2="12"/><line x1="8" y1="8" x2="12" y2="8"/><line x1="8" y1="16" x2="14" y2="16"/></svg></div>
-                <span>工单评价系统</span><span class="app-version">v1.0.0</span>
+                <span>工单评价系统</span><span class="app-version">v1.0.2</span>
             </div>
             <nav class="nav">
                 <button class="nav-btn active" onclick="goto('dashboard', this)">驾驶舱</button>
@@ -1488,6 +1651,7 @@
                 </div>
                 <button class="icon-btn" id="refreshBtn" onclick="refreshData()" title="刷新数据"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg></button>
                 <button class="icon-btn" id="themeBtn" onclick="toggleTheme()" title="切换主题"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg></button>
+                <button class="icon-btn" id="tvBtn" onclick="toggleTvMode()" title="大屏模式"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg></button>
                 <button class="icon-btn" onclick="logout()" title="退出登录"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg></button>
             </div>
         </header>
@@ -1692,7 +1856,9 @@
                                 <span class="multi-select-arrow"><svg viewBox="0 0 12 8" fill="none"><path d="M1 1.5L6 6.5L11 1.5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
                             </div>
                             <div class="multi-select-panel" id="projectMultiPanel">
-                                <div id="projectMultiOptions"></div>
+                                <div class="multi-select-options-scroll">
+                                    <div id="projectMultiOptions"></div>
+                                </div>
                                 <div class="multi-select-footer">
                                     <button class="multi-select-footer-btn multi-select-clear" onclick="clearMultiSelect('project')">清空</button>
                                     <button class="multi-select-footer-btn multi-select-confirm" onclick="confirmMultiSelect('project')">确定</button>
@@ -1706,7 +1872,9 @@
                                 <span class="multi-select-arrow"><svg viewBox="0 0 12 8" fill="none"><path d="M1 1.5L6 6.5L11 1.5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
                             </div>
                             <div class="multi-select-panel" id="statusMultiPanel">
-                                <div id="statusMultiOptions"></div>
+                                <div class="multi-select-options-scroll">
+                                    <div id="statusMultiOptions"></div>
+                                </div>
                                 <div class="multi-select-footer">
                                     <button class="multi-select-footer-btn multi-select-clear" onclick="clearMultiSelect('status')">清空</button>
                                     <button class="multi-select-footer-btn multi-select-confirm" onclick="confirmMultiSelect('status')">确定</button>
@@ -1728,7 +1896,9 @@
                                 <span class="multi-select-arrow"><svg viewBox="0 0 12 8" fill="none"><path d="M1 1.5L6 6.5L11 1.5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
                             </div>
                             <div class="multi-select-panel" id="typeMultiPanel">
-                                <div id="typeMultiOptions"></div>
+                                <div class="multi-select-options-scroll">
+                                    <div id="typeMultiOptions"></div>
+                                </div>
                                 <div class="multi-select-footer">
                                     <button class="multi-select-footer-btn multi-select-clear" onclick="clearMultiSelect('type')">清空</button>
                                     <button class="multi-select-footer-btn multi-select-confirm" onclick="confirmMultiSelect('type')">确定</button>
@@ -1743,11 +1913,13 @@
                                 <span class="multi-select-arrow"><svg viewBox="0 0 12 8" fill="none"><path d="M1 1.5L6 6.5L11 1.5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
                             </div>
                             <div class="multi-select-panel" id="kpiStatusMultiPanel">
-                                <div id="kpiStatusMultiOptions">
-                                    <div class="multi-select-item" data-value="已完成" onclick="toggleMultiItem('kpiStatus', '已完成', this)">已完成</div>
-                                    <div class="multi-select-item" data-value="逾期完成" onclick="toggleMultiItem('kpiStatus', '逾期完成', this)">逾期完成</div>
-                                    <div class="multi-select-item" data-value="进行中" onclick="toggleMultiItem('kpiStatus', '进行中', this)">进行中</div>
-                                    <div class="multi-select-item" data-value="逾期未完成" onclick="toggleMultiItem('kpiStatus', '逾期未完成', this)">逾期未完成</div>
+                                <div class="multi-select-options-scroll">
+                                    <div id="kpiStatusMultiOptions">
+                                        <div class="multi-select-item" data-value="已完成" onclick="toggleMultiItem('kpiStatus', '已完成', this)">已完成</div>
+                                        <div class="multi-select-item" data-value="逾期完成" onclick="toggleMultiItem('kpiStatus', '逾期完成', this)">逾期完成</div>
+                                        <div class="multi-select-item" data-value="进行中" onclick="toggleMultiItem('kpiStatus', '进行中', this)">进行中</div>
+                                        <div class="multi-select-item" data-value="逾期未完成" onclick="toggleMultiItem('kpiStatus', '逾期未完成', this)">逾期未完成</div>
+                                    </div>
                                 </div>
                                 <div class="multi-select-footer">
                                     <button class="multi-select-footer-btn multi-select-clear" onclick="clearMultiSelect('kpiStatus')">清空</button>
@@ -3241,6 +3413,45 @@
         }
 
         // ==========================================
+        // 大屏模式切换
+        // ==========================================
+        function toggleTvMode() {
+            state.isTvMode = !state.isTvMode;
+            document.body.classList.toggle('tv-mode', state.isTvMode);
+            
+            // 更新按钮样式
+            const tvBtn = document.getElementById('tvBtn');
+            if (state.isTvMode) {
+                tvBtn.style.background = 'linear-gradient(135deg, #7B5FBF, #4A8AF5)';
+                tvBtn.style.color = '#fff';
+                showToast('已切换到大屏模式');
+            } else {
+                tvBtn.style.background = '';
+                tvBtn.style.color = '';
+                showToast('已切换到正常模式');
+            }
+            localStorage.setItem(CONFIG.THEME_KEY + '_tv', state.isTvMode ? '1' : '0');
+            
+            // 重新渲染图表以适应布局
+            if (state.currentPage === 'dashboard') {
+                setTimeout(initCharts, 100);
+            }
+        }
+
+        function initTvMode() {
+            const saved = localStorage.getItem(CONFIG.THEME_KEY + '_tv');
+            if (saved === '1') {
+                state.isTvMode = true;
+                document.body.classList.add('tv-mode');
+                const tvBtn = document.getElementById('tvBtn');
+                if (tvBtn) {
+                    tvBtn.style.background = 'linear-gradient(135deg, #7B5FBF, #4A8AF5)';
+                    tvBtn.style.color = '#fff';
+                }
+            }
+        }
+
+        // ==========================================
         // 主题切换
         // ==========================================
         function toggleTheme() {
@@ -3527,6 +3738,9 @@
             // 初始化主题
             initTheme();
             
+            // 初始化大屏模式
+            initTvMode();
+            
             // 根据权限初始化界面
             initPermissions();
             
@@ -3659,8 +3873,8 @@
                 const selectedMonth = selectedEl ? ((selectedEl.dataset.value === 'all') ? null : selectedEl.dataset.value) : null;
                 state.selectedMonth = selectedMonth;
                 
-                // 加载计划系统概览数据
-                loadPlanOverviewData();
+                // 加载计划系统概览数据（不阻塞主流程）
+                loadPlanOverviewData().catch(() => {});
                 
                 let url = '/stats/dashboard';
                 const params = [];
@@ -4019,6 +4233,11 @@ async function loadWarnings() {
         let trendChart, distChart;
 
         function initCharts() {
+            // 确保ECharts已加载
+            if (typeof echarts === 'undefined') {
+                setTimeout(initCharts, 100);
+                return;
+            }
             initTrendChart();
             initDistChart();
         }
@@ -4026,6 +4245,7 @@ async function loadWarnings() {
         function initTrendChart() {
             const chartDom = document.getElementById('trendChart');
             if (!chartDom) return;
+            if (typeof echarts === 'undefined') return;
             
             if (trendChart) trendChart.dispose();
             trendChart = echarts.init(chartDom);
@@ -4079,6 +4299,7 @@ async function loadWarnings() {
         function initDistChart() {
             const chartDom = document.getElementById('distChart');
             if (!chartDom) return;
+            if (typeof echarts === 'undefined') return;
             
             if (distChart) distChart.dispose();
             distChart = echarts.init(chartDom);
@@ -4230,11 +4451,15 @@ async function loadWarnings() {
                 trigger.classList.add('active');
                 activeSelect = select;
                 activeOptions = options;
+                // 锁定页面滚动
+                document.body.classList.add('select-open');
             } else {
                 options.classList.remove('show');
                 trigger.classList.remove('active');
                 activeSelect = null;
                 activeOptions = null;
+                // 解除页面滚动锁定
+                document.body.classList.remove('select-open');
             }
         }
 
@@ -4261,6 +4486,8 @@ async function loadWarnings() {
             if (triggerBtn) triggerBtn.classList.remove('active');
             activeSelect = null;
             activeOptions = null;
+            // 解除页面滚动锁定
+            document.body.classList.remove('select-open');
             
             // 触发筛选或保存选择
             if (selectId === 'searchMonthSelect') {
@@ -5008,9 +5235,9 @@ async function loadWarnings() {
                     const isDanger = item.danger_flag === 1;
                     const color = isDanger ? '#dc2626' : '#d97706';
                     return '<tr style="font-size:13px;">' +
-                        '<td style="max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="' + (item.special_name || '') + '">' + (item.special_name || '') + '</td>' +
-                        '<td style="max-width:100px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + (item.project_name || '') + '</td>' +
-                        '<td>' + (item.person_name || '—') + '</td>' +
+                        '<td style="max-width:280px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="' + (item.special_name || '') + '">' + (item.special_name || '') + '</td>' +
+                        '<td style="max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + (item.project_name || '') + '</td>' +
+                        '<td style="max-width:80px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + (item.person_name || '—') + '</td>' +
                         '<td>' + (item.plan_end_date ? item.plan_end_date.slice(0, 10) : '') + '</td>' +
                         '<td style="color:' + color + ';font-weight:600;">' + daysLeft + '</td>' +
                         '<td><span style="background:' + (isDanger ? 'rgba(220,38,38,0.15)' : 'rgba(217,119,6,0.15)') + ';color:' + color + ';font-size:11px;padding:2px 8px;border-radius:10px;">' + (isDanger ? '逾期报警' : '到期预警') + '</span></td>' +
@@ -5259,9 +5486,11 @@ async function loadWarnings() {
         async function renderPatrolStats() {
             try {
                 const monthFilter = document.getElementById('patrolFilterMonth') ? document.getElementById('patrolFilterMonth').value : '';
+                const stateFilter = document.getElementById('patrolFilterState') ? document.getElementById('patrolFilterState').value : '';
                 const dateStart = document.getElementById('patrolDateStart') ? document.getElementById('patrolDateStart').value : '';
                 const dateEnd = document.getElementById('patrolDateEnd') ? document.getElementById('patrolDateEnd').value : '';
                 let statsUrl = '/api/ipms/stats?task_type=patrol';
+                if (stateFilter) statsUrl += '&task_state_name=' + encodeURIComponent(stateFilter);
                 if (dateStart) statsUrl += '&start_date=' + dateStart;
                 if (dateEnd) statsUrl += '&end_date=' + dateEnd + ' 23:59:59';
                 if (monthFilter && !dateStart && !dateEnd) {
@@ -5291,9 +5520,9 @@ async function loadWarnings() {
                 const stateColorMap = { '完成': '#10b981', '审核关闭': '#22c55e', '未完成': '#2563eb', '未派单': '#6b7280', '过期': '#dc2626' };
                 const color = stateColorMap[item.task_state_name] || 'var(--text-secondary)';
                 return '<tr style="font-size:13px;">' +
-                    '<td style="max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="' + (item.task_name || '') + '">' + (item.task_name || '') + '</td>' +
-                    '<td>' + (item.project_name || '') + '</td>' +
-                    '<td>' + (item.executor_name || item.user_name || '—') + '</td>' +
+                    '<td style="max-width:280px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="' + (item.task_name || '') + '">' + (item.task_name || '') + '</td>' +
+                    '<td style="max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + (item.project_name || '') + '</td>' +
+                    '<td style="max-width:80px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + (item.executor_name || item.user_name || '—') + '</td>' +
                     '<td>' + (item.start_time ? item.start_time.slice(0, 16).replace('T', ' ') : '') + '</td>' +
                     '<td>' + (item.end_time ? item.end_time.slice(0, 16).replace('T', ' ') : '') + '</td>' +
                     '<td style="color:' + color + ';font-weight:600;">' + (item.task_state_name || '') + '</td>' +
@@ -5391,9 +5620,9 @@ async function loadWarnings() {
                 const stateColorMap = { '完成': '#10b981', '审核关闭': '#22c55e', '未完成': '#2563eb', '未派单': '#6b7280', '过期': '#dc2626' };
                 const color = stateColorMap[item.task_state_name] || 'var(--text-secondary)';
                 return '<tr style="font-size:13px;">' +
-                    '<td style="max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="' + (item.task_name || '') + '">' + (item.task_name || '') + '</td>' +
-                    '<td>' + (item.project_name || '') + '</td>' +
-                    '<td>' + (item.executor_name || item.user_name || '—') + '</td>' +
+                    '<td style="max-width:280px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="' + (item.task_name || '') + '">' + (item.task_name || '') + '</td>' +
+                    '<td style="max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + (item.project_name || '') + '</td>' +
+                    '<td style="max-width:80px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + (item.executor_name || item.user_name || '—') + '</td>' +
                     '<td>' + (item.start_time ? item.start_time.slice(0, 16).replace('T', ' ') : '') + '</td>' +
                     '<td>' + (item.end_time ? item.end_time.slice(0, 16).replace('T', ' ') : '') + '</td>' +
                     '<td style="color:' + color + ';font-weight:600;">' + (item.task_state_name || '') + '</td>' +
@@ -5467,12 +5696,16 @@ async function loadWarnings() {
             if (isOpen) {
                 panel.classList.remove('show');
                 trigger.classList.remove('active');
+                // 解除页面滚动锁定
+                document.body.classList.remove('select-open');
             } else {
                 const rect = trigger.getBoundingClientRect();
                 panel.style.top = (rect.bottom + 8) + 'px';
                 panel.style.left = Math.min(rect.left, window.innerWidth - panel.offsetWidth - 20) + 'px';
                 panel.classList.add('show');
                 trigger.classList.add('active');
+                // 锁定页面滚动
+                document.body.classList.add('select-open');
                 // 初始化pending数据
                 const wrapId = trigger.closest('[id]')?.id || '';
                 if (wrapId.includes('projectMultiSelectWrap')) {
@@ -5503,7 +5736,7 @@ async function loadWarnings() {
                     return `<div class="multi-select-item${sel ? ' selected' : ''}" data-value="${p.id}" onclick="toggleMultiItem('project', '${p.id}', this)">${p.name}</div>`;
                 }).join('');
             } else if (type === 'status') {
-                const statusMap = { pending: '待处理', processing: '处理中', auditing: '待审核', completed: '已完成', closed: '已关闭' };
+                const statusMap = { completed: '完成', processing: '未完成', overdue: '过期', auditing: '审核关闭' };
                 optsContainer.innerHTML = Object.entries(statusMap).map(([v, label]) => {
                     const sel = pending.includes(v);
                     return `<div class="multi-select-item${sel ? ' selected' : ''}" data-value="${v}" onclick="toggleMultiItem('status', '${v}', this)">${label}</div>`;
@@ -5591,6 +5824,8 @@ async function loadWarnings() {
         function closeAllMultiPanels() {
             document.querySelectorAll('.multi-select-panel.show').forEach(el => el.classList.remove('show'));
             document.querySelectorAll('.multi-select-trigger.active').forEach(el => el.classList.remove('active'));
+            // 解除页面滚动锁定
+            document.body.classList.remove('select-open');
         }
 
         async function loadSearchMonths() {
@@ -7264,6 +7499,8 @@ async function loadWarnings() {
                 if (trigger) trigger.classList.remove('active');
                 activeSelect = null;
                 activeOptions = null;
+                // 解除页面滚动锁定
+                document.body.classList.remove('select-open');
             }
             // 关闭多选面板（点击触发器或面板内不关闭，点击外部关闭）
             const multiTriggers = document.querySelectorAll('.multi-select-trigger');
@@ -7273,6 +7510,8 @@ async function loadWarnings() {
                 if (panel && panel.classList.contains('show') && !wrap.contains(e.target)) {
                     panel.classList.remove('show');
                     trigger.classList.remove('active');
+                    // 解除页面滚动锁定
+                    document.body.classList.remove('select-open');
                 }
             });
         });

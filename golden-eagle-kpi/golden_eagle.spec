@@ -1,5 +1,5 @@
 # -*- mode: python ; coding: utf-8 -*-
-"""金鹰工单KPI管理系统 v1.0.0 - PyInstaller打包配置
+"""金鹰工单KPI管理系统 v1.0.1 - PyInstaller打包配置
 
 用法:
     cd golden-eagle-kpi

@@ -32,7 +32,7 @@ python main.py
 
 ## 版本
 
-当前版本：**v0.0.8post1**
+当前版本：**v1.0.1**
 
 版本更新请访问 [Gitee Releases](https://gitee.com/Zcx-BaixiaoBai/g-ai/releases)
 

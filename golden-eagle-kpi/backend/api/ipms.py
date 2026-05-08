@@ -83,45 +83,65 @@ def get_tasks(
 def get_ipms_stats(
     request: Request,
     task_type: str = Query(None, description="任务类型 patrol/maintain"),
+    task_state_name: str = Query(None, description="任务原始状态"),
+    start_date: str = Query(None, description="开始日期 YYYY-MM-DD"),
+    end_date: str = Query(None, description="结束日期 YYYY-MM-DD"),
     projectId: int = Query(None, description="项目ID"),
     db: Session = Depends(get_db),
 ):
-    """IPMS任务统计概览（4种状态实时计算，按项目过滤）"""
+    """IPMS任务统计概览（4种状态实时计算，支持按项目/类型/原始状态/日期筛选）"""
     from datetime import datetime, timedelta
+    from sqlalchemy import extract
 
     effective_project_id = _extract_project_id(request, projectId)
-    q = db.query(IPMSTask)
-    # 按项目过滤
-    if effective_project_id:
-        proj = db.query(Project).filter(Project.id == effective_project_id).first()
-        if proj:
-            q = q.filter(IPMSTask.project_name == proj.name)
-    # 按任务类型过滤
-    if task_type:
-        q = q.filter(IPMSTask.task_type == task_type)
-
-    rows = q.all()
     now = datetime.now()
-    today_15h = now.replace(hour=15, minute=0, second=0, microsecond=0)
-
-    in_progress = 0   # 进行中
-    finished = 0      # 已完成
-    overdue = 0       # 已逾期
-    today_new = 0     # 今日新增
-
-    for r in rows:
-        state = _compute_ipms_state(r, now, today_15h)
-        if state == "进行中":
-            in_progress += 1
-        elif state == "已完成":
-            finished += 1
-        elif state == "已逾期":
-            overdue += 1
-        elif state == "今日新增":
-            today_new += 1
-
-    # 按类型
-    type_stats = q.with_entities(
+    
+    # 构建基础查询（用于计数）
+    def base_query():
+        q = db.query(IPMSTask)
+        if effective_project_id:
+            proj = db.query(Project).filter(Project.id == effective_project_id).first()
+            if proj:
+                q = q.filter(IPMSTask.project_name == proj.name)
+        if task_type:
+            q = q.filter(IPMSTask.task_type == task_type)
+        if task_state_name:
+            q = q.filter(IPMSTask.task_state_name == task_state_name)
+        if start_date:
+            q = q.filter(IPMSTask.start_time >= start_date)
+        if end_date:
+            q = q.filter(IPMSTask.end_time <= end_date + " 23:59:59")
+        return q
+    
+    # 使用SQL直接统计，避免加载所有记录到内存
+    # 已完成：状态为"完成"或"审核关闭"
+    finished = base_query().filter(
+        IPMSTask.task_state_name.in_(["完成", "审核关闭"])
+    ).count()
+    
+    # 已逾期：状态为"过期"
+    overdue = base_query().filter(
+        IPMSTask.task_state_name == "过期"
+    ).count()
+    
+    # 今日新增：当日开始的任务（start_time.date == today）
+    today_new = base_query().filter(
+        IPMSTask.start_time != None,
+        extract('year', IPMSTask.start_time) == now.year,
+        extract('month', IPMSTask.start_time) == now.month,
+        extract('day', IPMSTask.start_time) == now.day,
+    ).count()
+    
+    # 进行中：其他未完成且未过期的任务
+    in_progress = base_query().filter(
+        ~IPMSTask.task_state_name.in_(["完成", "审核关闭", "过期"])
+    ).count()
+    
+    # 总数
+    total = base_query().count()
+    
+    # 按类型统计
+    type_stats = base_query().with_entities(
         IPMSTask.task_type,
         func.count(IPMSTask.id).label("total"),
     ).group_by(IPMSTask.task_type).all()
@@ -131,13 +151,14 @@ def get_ipms_stats(
     if effective_project_id:
         project_stats = []
     else:
-        project_stats = db.query(
+        # 使用 base_query() 确保应用相同的过滤条件（包括 task_type）
+        project_stats = base_query().with_entities(
             IPMSTask.project_name,
             func.count(IPMSTask.id).label("total"),
         ).group_by(IPMSTask.project_name).all()
 
     return {
-        "total": len(rows),
+        "total": total,
         "today_new": today_new,
         "in_progress": in_progress,
         "finished": finished,
@@ -149,20 +170,34 @@ def get_ipms_stats(
 
 
 def _compute_ipms_state(r, now, today_15h):
-    """实时计算IPMS任务状态（四态：今日新增/进行中/已完成/已逾期）"""
+    """
+    实时计算IPMS任务状态（四态）：
+    - 今日新增：当日开始的任务
+    - 进行中：未完成且未过期的任务
+    - 已完成：已完成或审核关闭的任务
+    - 已逾期：原始状态为"过期"的任务
+    """
     if r is None:
         return "未知"
-    # 已完成（原始状态：完成/审核关闭）
+    
+    # 判断是否已逾期（end_time已过）
+    is_overdue = r.end_time and now > r.end_time
+    
+    # 已完成或审核关闭
     if r.task_state_name in ("完成", "审核关闭"):
         return "已完成"
-    # 已逾期：原始状态为"过期"，或当前时间超过结束时间
-    if r.task_state_name == "过期" or (r.end_time and now > r.end_time):
+    
+    # 已逾期（原始状态为"过期"）
+    if r.task_state_name == "过期" or is_overdue:
         return "已逾期"
-    # 今日新增：计划开始时间是今天（且未完成未逾期）
-    if r.start_time and r.start_time.date() == now.date():
-        return "今日新增"
-    # 其余统一归为进行中（包含未派单、未完成但未逾期等）
+    
+    # 进行中：未完成且未逾期
     return "进行中"
+
+
+def _is_today_new(r, now):
+    """判断是否为今日新增（当日开始的任务）"""
+    return r.start_time and r.start_time.date() == now.date()
 
 
 @router.get("/warnings")

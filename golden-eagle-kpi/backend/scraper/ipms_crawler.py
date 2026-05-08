@@ -126,7 +126,7 @@ class IPMSCrawler:
             'startTime': start_time_full,
             'sysId': '',
             'taskState': '',
-            'timeType': 2,          # 2=结束时间
+            'timeType': 1,          # 1=开始时间
             'userId': '',
         }
 

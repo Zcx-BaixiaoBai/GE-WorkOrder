@@ -70,11 +70,31 @@ async def lifespan(app: FastAPI):
     # 确保导出目录存在
     AppConfig.ensure_dirs()
 
+    # 启动 APScheduler 定时同步（WY + IPMS，BI 需要浏览器不纳入定时）
+    from apscheduler.schedulers.background import BackgroundScheduler
+    from apscheduler.triggers.cron import CronTrigger
+
+    scheduler = BackgroundScheduler(timezone="Asia/Shanghai")
+    # 每天 08:00 / 13:30 / 17:00 触发 WY + IPMS 同步
+    for hour, minute in [(8, 0), (13, 30), (17, 0)]:
+        scheduler.add_job(
+            _run_scheduled_sync,
+            CronTrigger(hour=hour, minute=minute, timezone="Asia/Shanghai"),
+            id=f"sync_wy_ipms_{hour}{minute}",
+            replace_existing=True,
+            kwargs={"systems": ["wy", "ipms"]},
+        )
+    scheduler.start()
+    app.state.scheduler = scheduler
+    print(f"[定时] APScheduler 已启动，WY/IPMS 同步时间: 08:00 / 13:30 / 17:00")
+
     print(f"[启动] 金鹰工单KPI管理系统已启动")
     print(f"[启动] 访问地址: http://{AppConfig.HOST}:{AppConfig.PORT}")
     yield
 
     # 关闭时清理
+    scheduler.shutdown(wait=False)
+    print("[关闭] APScheduler 已关闭")
     print("[关闭] 金鹰工单KPI管理系统已停止")
 
 
@@ -91,7 +111,7 @@ def create_app() -> FastAPI:
     app.add_middleware(
         CORSMiddleware,
         allow_origins=["*"],
-        allow_credentials=True,
+        allow_credentials=False,
         allow_methods=["*"],
         allow_headers=["*"],
     )
@@ -144,6 +164,36 @@ def create_app() -> FastAPI:
 
 
 app = create_app()
+
+
+def _run_scheduled_sync(systems=None):
+    """APScheduler 回调：触发 WY / IPMS 同步（线程中运行，不阻塞主线程）"""
+    import threading
+    from datetime import datetime
+    systems = systems or ["wy", "ipms"]
+
+    def _sync_wy():
+        from backend.api.sync_all import _trigger_wy
+        _trigger_wy()
+
+    def _sync_ipms():
+        from backend.api.sync_all import _trigger_ipms
+        _trigger_ipms()
+
+    now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    print(f"[定时同步] 开始 ({now_str})")
+
+    for sys_name in systems:
+        if sys_name == "wy":
+            t = threading.Thread(target=_sync_wy, daemon=True)
+            t.start()
+            print("[定时同步] WY 筹建专项已触发")
+        elif sys_name == "ipms":
+            t = threading.Thread(target=_sync_ipms, daemon=True)
+            t.start()
+            print("[定时同步] IPMS 巡检/维保已触发")
+
+    print(f"[定时同步] 全部触发完成 ({datetime.now().strftime('%Y-%m-%d %H:%M:%S')})")
 
 
 if __name__ == "__main__":

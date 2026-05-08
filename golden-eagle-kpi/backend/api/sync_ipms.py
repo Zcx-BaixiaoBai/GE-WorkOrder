@@ -93,10 +93,11 @@ def sync_ipms(request: SyncIPMSRequest = None, db: Session = Depends(get_db)):
             _ipms_sync_status["message"] = "写入数据库..."
 
             try:
+                # 全量覆盖：先清空再插入
                 session.query(IPMSTask).delete()
                 session.commit()
 
-                # 分批写入（bulk_save_objects 性能更好）
+                # 分批写入
                 def _add_batch(data_list, task_type):
                     batch = []
                     for item in data_list:

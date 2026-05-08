@@ -11,6 +11,7 @@ import os
 import shutil
 import traceback
 import json
+import threading
 from datetime import datetime
 from pathlib import Path
 from concurrent.futures import ThreadPoolExecutor
@@ -33,6 +34,9 @@ _sync_status = {
     "last_sync_time": None,
     "last_sync_result": None,
 }
+
+# 进度更新锁：防止两个入库线程并发写 progress 导致进度条来回跳
+_progress_lock = threading.Lock()
 
 
 class SyncService:
@@ -475,8 +479,12 @@ def _clean_id(raw_id) -> str:
 
 def _update_progress(start_pct: int, end_pct: int, internal_pct: float):
     global _sync_status
-    p = start_pct + (end_pct - start_pct) * internal_pct
-    _sync_status["progress"] = int(min(p, end_pct))
+    with _progress_lock:
+        p = start_pct + (end_pct - start_pct) * internal_pct
+        new_val = int(min(p, end_pct))
+        # 进度只进不退，防止两个入库线程互相覆盖导致进度条来回跳
+        if new_val > _sync_status["progress"]:
+            _sync_status["progress"] = new_val
 
 
 def _parse_datetime(val):

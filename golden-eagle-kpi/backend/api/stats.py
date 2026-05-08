@@ -14,17 +14,35 @@ def get_available_months(
     db: Session = Depends(get_db),
 ):
     """获取有数据的所有月份 YYYY-MM 列表"""
-    sql = """
-        SELECT DISTINCT strftime('%Y-%m', create_time) as month
-        FROM work_tickets
-        WHERE project_id = :pid AND create_time IS NOT NULL
-        UNION ALL
-        SELECT DISTINCT strftime('%Y-%m', complete_time) as month
-        FROM work_tickets
-        WHERE project_id = :pid AND complete_time IS NOT NULL
-        ORDER BY month DESC
-    """
-    rows = db.execute(text(sql), {"pid": projectId}).fetchall()
+    if projectId:
+        sql = """
+            SELECT DISTINCT strftime('%Y-%m', create_time) as month
+            FROM work_tickets
+            WHERE project_id = :pid AND create_time IS NOT NULL
+            UNION ALL
+            SELECT DISTINCT strftime('%Y-%m', complete_time) as month
+            FROM work_tickets
+            WHERE project_id = :pid AND complete_time IS NOT NULL
+            ORDER BY month DESC
+        """
+        rows = db.execute(text(sql), {"pid": projectId}).fetchall()
+    else:
+        # 无项目过滤时，合并 work_tickets 和 snapshots 的所有月份
+        sql = """
+            SELECT DISTINCT strftime('%Y-%m', create_time) as month
+            FROM work_tickets WHERE create_time IS NOT NULL
+            UNION
+            SELECT DISTINCT strftime('%Y-%m', complete_time) as month
+            FROM work_tickets WHERE complete_time IS NOT NULL
+            UNION
+            SELECT DISTINCT strftime('%Y-%m', create_time) as month
+            FROM snapshots WHERE create_time IS NOT NULL
+            UNION
+            SELECT DISTINCT strftime('%Y-%m', complete_time) as month
+            FROM snapshots WHERE complete_time IS NOT NULL
+            ORDER BY month DESC
+        """
+        rows = db.execute(text(sql)).fetchall()
     months = sorted(set(r[0] for r in rows if r[0]), reverse=True)
     return {"months": months}
 
