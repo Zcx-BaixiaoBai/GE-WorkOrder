@@ -18,7 +18,7 @@ router = APIRouter(prefix="/api/update", tags=["更新"])
 
 GITEE_OWNER = "Zcx-BaixiaoBai"
 GITEE_REPO = "g-ai"
-CURRENT_VERSION = "v1.0.0"
+CURRENT_VERSION = "v1.0.3"
 
 
 def _load_token() -> str:
@@ -35,18 +35,19 @@ GITEE_TOKEN = _load_token()
 def get_local_version() -> str:
     """读取本地版本号，优先读 VERSION 文件"""
     import sys
-    # 1. 项目根目录的 VERSION 文件
-    project_root = Path(__file__).parent.parent.parent
-    version_file = project_root / "VERSION"
-    if version_file.exists():
-        return version_file.read_text(encoding="utf-8").strip()
-    # 2. frozen 模式：exe 旁边的 VERSION
+    # frozen 模式下读取 exe 同目录的 VERSION
     if getattr(sys, 'frozen', False):
         exe_dir = Path(sys.executable).parent
-        frozen_version = exe_dir / "VERSION"
-        if frozen_version.exists():
-            return frozen_version.read_text(encoding="utf-8").strip()
-    return CURRENT_VERSION
+        version_file = exe_dir / "VERSION"
+        if version_file.exists():
+            return version_file.read_text(encoding="utf-8").strip()
+        return CURRENT_VERSION
+    else:
+        project_root = Path(__file__).parent.parent.parent
+        version_file = project_root / "VERSION"
+        if version_file.exists():
+            return version_file.read_text(encoding="utf-8").strip()
+        return CURRENT_VERSION
 
 
 def _version_key(tag: str) -> tuple:
@@ -146,7 +147,12 @@ def apply_update(req: ApplyUpdateRequest):
     从 Gitee release 下载 zip 包，解压并覆盖本地项目目录。
     请求体: {"download_url": "https://gitee.com/.../xxx.zip"}
     """
-    project_root = Path(__file__).parent.parent.parent
+    import sys
+    # frozen 模式下解压到 exe 同目录
+    if getattr(sys, 'frozen', False):
+        project_root = Path(sys.executable).parent
+    else:
+        project_root = Path(__file__).parent.parent.parent
     download_url = req.download_url
 
     if not download_url:

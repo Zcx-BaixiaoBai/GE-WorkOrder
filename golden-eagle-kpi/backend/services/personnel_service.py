@@ -24,15 +24,16 @@ class PersonnelService:
         """获取人力清单"""
         query = db.query(Personnel)
 
+        # 预取负责人姓名集合（用于项目负责人/一线员工筛选）
+        all_pm_names = {
+            r[0] for r in db.query(ProjectManager.manager_name).all()
+        }
+
         if project_id:
             query = query.filter(Personnel.project_id == project_id)
         if role:
             # 系统角色（如"项目负责人"）与 Personnel.role（职务）不是同一字段
             # 需要将系统角色还原为职务关键词逻辑 + 负责人清单来过滤
-            # 先预取负责人姓名集合（用于项目负责人/一线员工筛选）
-            all_pm_names = set(
-                r[0] for r in db.query(ProjectManager.manager_name).all()
-            )
             if role == "项目负责人":
                 # 两种人：1) 姓名在负责人清单中  2) 职务含总监/总经理但不含副
                 query = query.filter(
@@ -80,6 +81,28 @@ class PersonnelService:
         offset = (page - 1) * page_size
         items = query.offset(offset).limit(page_size).all()
 
+        # 补充不在 personnel 表中的项目负责人（虚拟条目）
+        # 场景：role=项目负责人 或 keyword 匹配到负责人姓名
+        virtual_managers = _get_virtual_project_managers(project_id, role, keyword, db)
+        # 去重：排除已存在于 items 中的姓名
+        existing_names = {p.name for p in items}
+        virtual_items = [vm for vm in virtual_managers if vm["name"] not in existing_names]
+        # 如果当前页不够，补充虚拟条目（保证项目负责人始终可见）
+        if virtual_items and (role == "项目负责人" or (keyword and any(vm["name"] == keyword for vm in virtual_items))):
+            # 把虚拟条目插入到items前面（优先展示）
+            # 模拟 Personnel 对象结构
+            class _VirtualPerson:
+                def __init__(self, vm):
+                    self.employee_id = vm["employee_id"]
+                    self.name = vm["name"]
+                    self.role = vm["role"]
+                    self.project_id = vm["project_id"]
+                    self.is_outsourcing = False
+                    self.status = "在职"
+            for vm in virtual_items:
+                items.insert(0, _VirtualPerson(vm))
+            total += len(virtual_items)
+
         # 获取项目名称
         project_names = {}
         for p in db.query(Project).all():
@@ -91,6 +114,24 @@ class PersonnelService:
         # 计算每人发起工单数
         result_items = []
         for person in items:
+            # 虚拟条目（不在 personnel 表中）：无工号，发起数为0
+            if person.employee_id is None:
+                result_items.append({
+                    "id": None,
+                    "name": person.name,
+                    "position": "项目负责人",
+                    "role": "项目负责人",
+                    "projectId": str(person.project_id) if person.project_id else None,
+                    "projectName": person.project_name if hasattr(person, 'project_name') else project_names.get(person.project_id, ""),
+                    "count": 0,
+                    "target": 30,
+                    "actual": 0,
+                    "deduction": 0,
+                    "isOutsourcing": False,
+                    "status": "在职",
+                })
+                continue
+
             # 查询该人员发起的随手拍数（从 snapshots 表）
             count_sql = text("""
                 SELECT COUNT(*) as cnt FROM snapshots
@@ -324,3 +365,56 @@ def _map_system_role(person, db) -> str:
     if any(k in position for k in ["副总监", "副经理", "副总经理", "工程副总监", "高级经理", "经理", "主管", "物业经理", "客服经理", "工程经理"]):
         return "部门管理"
     return "一线员工"
+
+
+def _get_virtual_project_managers(project_id, role, keyword, db):
+    """获取不在 personnel 表中的项目负责人（虚拟条目）
+
+    当负责人姓名在 projects_manager_list 中存在但 personnel 表中无此人时，
+    作为虚拟条目补充到人力清单中。
+    """
+    from sqlalchemy import text
+
+    # 构建查询条件
+    conditions = []
+    params = {}
+
+    if project_id:
+        conditions.append("pm.project_id = :pid")
+        params["pid"] = project_id
+
+    if role and role != "项目负责人":
+        return []  # 非项目负责人角色不需要虚拟条目
+
+    if keyword:
+        conditions.append("pm.manager_name LIKE :kw")
+        params["kw"] = f"%{keyword}%"
+
+    where_clause = ("WHERE " + " AND ".join(conditions)) if conditions else ""
+
+    sql = text(f"""
+        SELECT pm.project_id, pm.manager_name, p.name as proj_name
+        FROM projects_manager_list pm
+        LEFT JOIN projects p ON pm.project_id = p.id
+        {where_clause}
+    """)
+    rows = db.execute(sql, params).fetchall()
+
+    # 只返回不在 personnel 表中的负责人
+    result = []
+    for row in rows:
+        pid, m_name, proj_name = row
+        # 检查是否在 personnel 表中存在
+        exists = db.execute(
+            text("SELECT 1 FROM personnel WHERE project_id = :pid AND name = :name AND status = '在职'"),
+            {"pid": pid, "name": m_name}
+        ).fetchone()
+        if not exists:
+            result.append({
+                "employee_id": None,
+                "name": m_name,
+                "role": "项目负责人",
+                "project_id": pid,
+                "project_name": proj_name or f"项目{pid}",
+            })
+    return result

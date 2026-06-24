@@ -77,41 +77,52 @@ class StatsService:
         # 构建 initiator_id → count 映射
         ticket_map = {row[0]: row[1] for row in ticket_rows}
 
-        # 一次性构建项目负责人姓名集合
+        # 从 projects_manager_list 获取该项目的负责人姓名列表
         manager_sql = text("""
             SELECT manager_name FROM projects_manager_list
             WHERE project_id = :pid
         """)
-        manager_names = {row[0] for row in db.execute(manager_sql, {"pid": project_id}).fetchall()}
+        db_manager_names = [row[0] for row in db.execute(manager_sql, {"pid": project_id}).fetchall()]
 
         # 部门管理岗位关键词（来自管理层岗位清单）
         dept_keywords = {"副总监", "副经理", "副总经理", "工程副总监", "高级经理",
                          "物业经理", "客服经理", "工程经理", "安全经理", "安全主管",
                          "综合主管", "物业主管", "环境主管", "经理", "主管"}
 
-        # 分类人员
+        # 以负责人清单为准，逐人匹配 personnel 表
+        all_personnel_by_name = {row[1]: row for row in all_personnel}
         leader_list = []      # 项目负责人
+        assigned_ids = set()  # 已被归为负责人的工号
+
+        for m_name in db_manager_names:
+            if m_name in all_personnel_by_name:
+                emp_id, name, role = all_personnel_by_name[m_name]
+                leader_list.append((emp_id, name, role))
+                assigned_ids.add(emp_id)
+            else:
+                # 负责人不在人员清单中，虚拟占位（发起数=0）
+                leader_list.append((None, m_name, None))
+
+        # 剩余人员按岗位关键词分类
         dept_list = []        # 部门管理
         staff_list = []       # 一线员工
 
         for emp_id, name, role in all_personnel:
-            # 第一优先级：负责人清单（姓名精确匹配）
-            if name in manager_names:
-                leader_list.append((emp_id, name, role))
-            # 第二：管理层岗位清单 → 部门管理
-            elif role and any(k in role for k in dept_keywords):
+            if emp_id in assigned_ids:
+                continue  # 已在负责人列表
+            if role and any(k in role for k in dept_keywords):
                 dept_list.append((emp_id, name, role))
-            # 其余 → 一线员工
             else:
                 staff_list.append((emp_id, name, role))
 
         def count_initiated(person_list):
-            """统计列表中人员发起的工单总数"""
+            """统计列表中人员发起的工单总数（虚拟占位项 emp_id=None 发起数为0）"""
             if not person_list:
                 return 0
             total = 0
             for emp_id, _, _ in person_list:
-                total += ticket_map.get(emp_id, 0)
+                if emp_id is not None:
+                    total += ticket_map.get(emp_id, 0)
             return total
 
         def build_level(name_list, person_list, per_person_target):
@@ -327,6 +338,9 @@ class StatsService:
                 return "部门管理"
             return "一线员工"
 
+        # 跟踪已通过 personnel 匹配到的负责人
+        manager_found = {(pid, name): False for pid in target_pids for name in manager_names_map.get(pid, set())}
+
         # 第一次遍历：计算每人的达成率
         raw_items = []
         for emp_id, name, role, pid in all_personnel:
@@ -337,6 +351,10 @@ class StatsService:
             base_target = target_map.get(mapped_role, 30)
             target_dynamic = round(base_target * days_passed / days_in_month)
             ar = round(initiated * 100.0 / target_dynamic, 1) if target_dynamic > 0 else 0
+
+            # 标记该负责人已通过人员匹配找到
+            if mapped_role == "项目负责人":
+                manager_found[(pid, name)] = True
 
             if ar < threshold:
                 warning_type = "severe" if ar < 70 else "normal"
@@ -354,6 +372,33 @@ class StatsService:
                     "daysInMonth": days_in_month,
                     "projectId": pid,
                     "_ar": ar,  # 临时用于排序
+                })
+
+        # 补充不在人员清单中的负责人（虚拟占位）
+        for (pid, m_name), found in manager_found.items():
+            if found:
+                continue
+            if level and level != "项目负责人":
+                continue
+            base_target = target_map.get("项目负责人", 30)
+            target_dynamic = round(base_target * days_passed / days_in_month)
+            ar = 0.0  # 无可发起的工单
+            if ar < threshold:
+                warning_type = "severe"
+                raw_items.append({
+                    "id": None,
+                    "name": m_name,
+                    "level": "项目负责人",
+                    "position": "",
+                    "initiated": 0,
+                    "target": base_target,
+                    "targetDynamic": target_dynamic,
+                    "achievementRate": ar,
+                    "warningType": warning_type,
+                    "daysPassed": days_passed,
+                    "daysInMonth": days_in_month,
+                    "projectId": pid,
+                    "_ar": ar,
                 })
 
         # 项目内排名：按达成率升序（最低=rank1）

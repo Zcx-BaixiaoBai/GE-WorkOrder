@@ -11,7 +11,7 @@ from pathlib import Path
 # ===================== 配置区 =====================
 # 注意：正式打包前，VERSION 文件中的版本号必须已经更新！
 APP_NAME = "金鹰工单KPI"
-VERSION = "v1.0.1"
+VERSION = "v1.0.3"
 DIST_DIR = Path("dist") / APP_NAME          # PyInstaller 输出目录
 RELEASE = Path("releases")                   # 最终发布目录
 RELEASE_PKG = RELEASE / f"{APP_NAME}-{VERSION}"

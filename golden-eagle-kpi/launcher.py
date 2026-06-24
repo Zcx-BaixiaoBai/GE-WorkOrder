@@ -221,7 +221,8 @@ def main():
         AppConfig.LOGS_DIR = base_dir / "data" / "logs"
         AppConfig.DB_PATH = base_dir / "data" / "golden_eagle_kpi.db"
         if getattr(sys, 'frozen', False):
-            AppConfig.FRONTEND_DIR = Path(sys._MEIPASS) / "frontend"
+            # PyInstaller打包后，frontend在_internal目录下
+            AppConfig.FRONTEND_DIR = base_dir / "_internal" / "frontend"
         else:
             AppConfig.FRONTEND_DIR = base_dir / "frontend"
     except ImportError:

@@ -142,6 +142,7 @@ def create_app() -> FastAPI:
     from backend.api.sync_all import router as sync_all_router
     from backend.api.wy import router as wy_router
     from backend.api.ipms import router as ipms_router
+    from backend.api.project_manager import router as project_manager_router
 
     app.include_router(auth_router)
     app.include_router(stats_router)
@@ -159,6 +160,20 @@ def create_app() -> FastAPI:
     app.include_router(sync_all_router)
     app.include_router(wy_router)
     app.include_router(ipms_router)
+    app.include_router(project_manager_router)
+
+    # 关闭应用API
+    import os
+    import signal
+    
+    @app.post("/api/shutdown")
+    def shutdown_app():
+        """关闭应用（前端+后端）"""
+        print("[关闭] 收到关闭请求")
+        # 杀掉自己
+        pid = os.getpid()
+        os.kill(pid, signal.SIGTERM)
+        return {"success": True, "message": "应用正在关闭..."}
 
     return app
 
