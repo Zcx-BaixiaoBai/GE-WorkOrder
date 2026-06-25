@@ -289,18 +289,40 @@ select.input { appearance: none; padding-right: 28px; }
 .step-content p { font-size: 12px; color: var(--text-2); }
 
 /* AI CHAT */
-.ai-float-btn { position: fixed; bottom: 20px; right: 20px; z-index: 400; width: 40px; height: 40px; border-radius: 50%; border: 1px solid var(--border); background: var(--bg-card); cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.15s; }
-.ai-float-btn:hover { border-color: var(--border-strong); }
-.ai-chat-overlay { position: fixed; bottom: 0; right: 0; z-index: 401; width: 380px; height: 520px; background: var(--bg-card); border: 1px solid var(--border); display: none; flex-direction: column; }
-.ai-chat-overlay.show { display: flex; }
-.ai-chat-header { padding: 12px 16px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; }
-.ai-chat-messages { flex: 1; overflow-y: auto; padding: 12px 16px; }
-.ai-chat-input { display: flex; gap: 8px; padding: 12px 16px; border-top: 1px solid var(--border); }
-.ai-msg { margin-bottom: 12px; }
-.ai-msg.user { text-align: right; }
-.ai-msg .ai-bubble { display: inline-block; padding: 8px 12px; font-size: 12px; border-radius: var(--radius); max-width: 80%; text-align: left; line-height: 1.6; }
-.ai-msg.user .ai-bubble { background: var(--text); color: var(--bg-card); }
-.ai-msg.assistant .ai-bubble { background: var(--bg-hover); color: var(--text); }
+.ai-float-btn { position: fixed; bottom: 20px; right: 20px; z-index: 400; width: 44px; height: 44px; border-radius: 50%; border: 1px solid var(--border); background: var(--bg-card); cursor: grab; display: flex; align-items: center; justify-content: center; transition: box-shadow 0.2s, transform 0.2s; box-shadow: 0 2px 8px rgba(0,0,0,0.1); user-select: none; }
+.ai-float-btn:hover { border-color: var(--border-strong); box-shadow: 0 4px 16px rgba(0,0,0,0.15); }
+.ai-float-btn:active { cursor: grabbing; transform: scale(1.05); }
+.ai-float-btn.dragging { cursor: grabbing; transition: none; }
+.ai-float-btn.active { background: var(--bg-active); }
+.ai-chat-overlay { position: fixed; z-index: 401; width: 380px; height: 520px; background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-lg); display: none; flex-direction: column; box-shadow: 0 8px 32px rgba(0,0,0,0.12); overflow: hidden; }
+.ai-chat-overlay.show { display: flex; animation: chatSlideIn 0.25s ease-out; }
+@keyframes chatSlideIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+.ai-chat-overlay.pos-bottom { bottom: 70px; right: 20px; }
+.ai-chat-overlay.pos-top { top: 70px; right: 20px; }
+.ai-chat-overlay.pos-left { bottom: 70px; left: 20px; }
+.ai-chat-overlay.pos-right { bottom: 70px; right: 20px; }
+.ai-chat-header { padding: 16px 20px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; background: var(--bg-card); }
+.ai-chat-title { display: flex; align-items: center; gap: 10px; }
+.ai-chat-name { font-size: 14px; font-weight: 600; color: var(--text); }
+.ai-chat-sub { font-size: 11px; color: var(--text-2); }
+.ai-chat-controls { display: flex; gap: 6px; }
+.ai-btn-clear, .ai-btn-close { width: 28px; height: 28px; border: none; background: var(--bg-hover); cursor: pointer; display: flex; align-items: center; justify-content: center; border-radius: var(--radius); color: var(--text-2); font-size: 14px; transition: all 0.15s; }
+.ai-btn-clear:hover, .ai-btn-close:hover { background: var(--bg-active); color: var(--text); }
+.ai-chat-messages { flex: 1; overflow-y: auto; padding: 16px 20px; display: flex; flex-direction: column; gap: 12px; }
+.ai-chat-input-wrap { padding: 16px 20px; border-top: 1px solid var(--border); display: flex; gap: 8px; align-items: flex-end; background: var(--bg-card); }
+.ai-chat-input { flex: 1; min-height: 40px; max-height: 120px; padding: 10px 14px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--bg-card); color: var(--text); font-size: 13px; font-family: var(--font); resize: none; outline: none; transition: border-color 0.15s; }
+.ai-chat-input:focus { border-color: var(--border-strong); }
+.ai-send-btn { width: 40px; height: 40px; border: none; background: var(--text); color: var(--bg-card); cursor: pointer; display: flex; align-items: center; justify-content: center; border-radius: var(--radius); transition: opacity 0.15s; flex-shrink: 0; }
+.ai-send-btn:hover { opacity: 0.85; }
+.ai-send-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+.ai-msg { display: flex; gap: 8px; max-width: 100%; }
+.ai-msg.user { flex-direction: row-reverse; }
+.ai-msg-avatar { width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0; background: var(--bg-hover); color: var(--text-2); }
+.ai-msg.user .ai-msg-avatar { background: var(--text); color: var(--bg-card); }
+.ai-msg-bubble { padding: 10px 14px; font-size: 13px; border-radius: var(--radius-lg); max-width: 80%; text-align: left; line-height: 1.6; word-wrap: break-word; }
+.ai-msg.user .ai-msg-bubble { background: var(--text); color: var(--bg-card); border-bottom-right-radius: var(--radius-sm); }
+.ai-msg-bot .ai-msg-bubble { background: var(--bg-hover); color: var(--text); border-bottom-left-radius: var(--radius-sm); }
+.ai-chat-context { padding: 8px 20px; font-size: 11px; color: var(--text-3); background: var(--bg-hover); border-top: 1px solid var(--border); }
 
 /* FILTER TAGS */
 .filter-tag { display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; font-size: 11px; background: var(--bg-hover); color: var(--text-2); border-radius: var(--radius); cursor: pointer; }
@@ -6802,6 +6824,120 @@ async function loadWarnings() {
         let aiConversationId = null;
         let aiIsStreaming = false;
 
+        // AI浮球拖拽功能
+        (function initAIFloatDrag() {
+            const btn = document.getElementById('aiFloatBtn');
+            if (!btn) return;
+            
+            let isDragging = false;
+            let hasMoved = false;
+            let startX, startY, startLeft, startTop;
+            
+            btn.addEventListener('mousedown', function(e) {
+                if (e.button !== 0) return; // 只响应左键
+                
+                isDragging = true;
+                hasMoved = false;
+                btn.classList.add('dragging');
+                
+                startX = e.clientX;
+                startY = e.clientY;
+                const rect = btn.getBoundingClientRect();
+                startLeft = rect.left;
+                startTop = rect.top;
+                
+                e.preventDefault();
+            });
+            
+            document.addEventListener('mousemove', function(e) {
+                if (!isDragging) return;
+                
+                const deltaX = e.clientX - startX;
+                const deltaY = e.clientY - startY;
+                
+                if (Math.abs(deltaX) > 5 || Math.abs(deltaY) > 5) {
+                    hasMoved = true;
+                }
+                
+                let newLeft = startLeft + deltaX;
+                let newTop = startTop + deltaY;
+                
+                // 边界限制
+                const btnSize = 44;
+                const padding = 10;
+                newLeft = Math.max(padding, Math.min(window.innerWidth - btnSize - padding, newLeft));
+                newTop = Math.max(padding, Math.min(window.innerHeight - btnSize - padding, newTop));
+                
+                // 重置定位属性
+                btn.style.right = 'auto';
+                btn.style.bottom = 'auto';
+                btn.style.left = newLeft + 'px';
+                btn.style.top = newTop + 'px';
+            });
+            
+            document.addEventListener('mouseup', function(e) {
+                if (!isDragging) return;
+                
+                isDragging = false;
+                btn.classList.remove('dragging');
+                
+                // 如果发生了拖拽，阻止点击事件
+                if (hasMoved) {
+                    e.stopPropagation();
+                    e.preventDefault();
+                }
+            });
+            
+            // 阻止拖拽后的点击
+            btn.addEventListener('click', function(e) {
+                if (hasMoved) {
+                    e.stopPropagation();
+                    e.preventDefault();
+                    hasMoved = false;
+                }
+            }, true);
+        })();
+
+        function calculateChatPosition() {
+            const btn = document.getElementById('aiFloatBtn');
+            const overlay = document.getElementById('aiChatOverlay');
+            if (!btn || !overlay) return;
+            
+            const btnRect = btn.getBoundingClientRect();
+            const btnCenterX = btnRect.left + btnRect.width / 2;
+            const btnCenterY = btnRect.top + btnRect.height / 2;
+            
+            const viewportWidth = window.innerWidth;
+            const viewportHeight = window.innerHeight;
+            
+            // 清除所有位置类
+            overlay.classList.remove('pos-bottom', 'pos-top', 'pos-left', 'pos-right');
+            
+            // 判断垂直位置
+            const isBottomHalf = btnCenterY > viewportHeight / 2;
+            
+            // 判断水平位置
+            const isRightHalf = btnCenterX > viewportWidth / 2;
+            
+            // 优先垂直方向（上下），其次水平方向（左右）
+            if (isBottomHalf) {
+                // 按钮在下半屏，弹窗显示在上方
+                overlay.classList.add('pos-top');
+            } else {
+                // 按钮在上半屏，弹窗显示在下方
+                overlay.classList.add('pos-bottom');
+            }
+            
+            // 调整水平位置
+            if (isRightHalf) {
+                overlay.style.right = '20px';
+                overlay.style.left = 'auto';
+            } else {
+                overlay.style.left = '20px';
+                overlay.style.right = 'auto';
+            }
+        }
+
         function toggleAIChat() {
             const overlay = document.getElementById('aiChatOverlay');
             const btn = document.getElementById('aiFloatBtn');
@@ -6810,9 +6946,13 @@ async function loadWarnings() {
                 overlay.classList.remove('show');
                 btn.classList.remove('active');
             } else {
+                calculateChatPosition();
                 overlay.classList.add('show');
                 btn.classList.add('active');
-                document.getElementById('aiInput').focus();
+                setTimeout(() => {
+                    const input = document.getElementById('aiInput');
+                    if (input) input.focus();
+                }, 100);
             }
         }
 
