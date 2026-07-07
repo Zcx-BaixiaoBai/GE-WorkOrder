@@ -84,19 +84,107 @@ export default function Plans() {
     )
   }
 
-  // ===== 真正的甘特图（动态月份范围）=====
+  // ===== 甘特图（全年12月 或 单月按天）=====
   const renderGantt = () => {
-    const ganttItems = (data.items || []).slice(0, 20)
-    if (ganttItems.length === 0) return null
-
-    // 根据selectedMonth计算显示的12个月范围
-    let baseYear = 2026, baseMonth = 0
+    const allItems = data.items || []
+    
     if (selectedMonth) {
+      // ===== 单月模式：按天显示 =====
       const [y, m] = selectedMonth.split('-')
-      baseYear = parseInt(y)
-      baseMonth = parseInt(m) - 1
+      const year = parseInt(y), month = parseInt(m) - 1
+      const daysInMonth = new Date(year, month + 1, 0).getDate()
+      const monthStart = new Date(year, month, 1)
+      const monthEnd = new Date(year, month, daysInMonth, 23, 59, 59)
+      
+      // 过滤：与本月有交集的计划
+      const monthItems = allItems.filter(item => {
+        const s = item.plan_start_date ? new Date(item.plan_start_date) : null
+        const e = item.plan_end_date ? new Date(item.plan_end_date) : null
+        return s && e && s <= monthEnd && e >= monthStart
+      }).slice(0, 20)
+      
+      if (monthItems.length === 0) {
+        return (
+          <div className="card" style={{ marginBottom: 16, padding: 24, textAlign: 'center', color: 'var(--text-3)' }}>
+            {selectedMonth} 无计划数据
+          </div>
+        )
+      }
+      
+      // 生成日期刻度（每5天一个标签）
+      const dayMarks = []
+      for (let d = 1; d <= daysInMonth; d += 5) {
+        dayMarks.push(d)
+      }
+      if (dayMarks[dayMarks.length - 1] !== daysInMonth) dayMarks.push(daysInMonth)
+      
+      return (
+        <div className="card" style={{ marginBottom: 16, overflow: 'hidden' }}>
+          <div className="card-header"><span className="card-title">{selectedMonth} 计划甘特图（{monthItems.length}条）</span></div>
+          <div className="card-body" style={{ overflowX: 'auto' }}>
+            <div style={{ minWidth: 700 }}>
+              {/* 表头：任务名 + 日期刻度 */}
+              <div style={{ display: 'flex', borderBottom: '1px solid var(--border)', paddingBottom: 6, marginBottom: 6 }}>
+                <div style={{ width: 160, flexShrink: 0, fontSize: 11, fontWeight: 600, color: 'var(--text-3)' }}>任务名称</div>
+                <div style={{ flex: 1, position: 'relative', height: 18 }}>
+                  {dayMarks.map(d => (
+                    <div key={d} style={{ position: 'absolute', left: `${((d - 1) / daysInMonth) * 100}%`, fontSize: 10, color: 'var(--text-3)', transform: 'translateX(-50%)' }}>{d}日</div>
+                  ))}
+                </div>
+              </div>
+              {/* 每行 */}
+              {monthItems.map((item, idx) => {
+                const start = new Date(item.plan_start_date)
+                const end = new Date(item.plan_end_date)
+                const state = item.computed_state || item.plan_state || ''
+                const isOverdue = state.includes('逾期')
+                const isPaused = state === '已暂停' || item.pause_flag === 1
+                const isFinished = item.finish_flag === 1
+                const isInProgress = state === '进行中'
+                
+                // 计算在本月内的位置（裁剪到月边界）
+                const effStart = start < monthStart ? monthStart : start
+                const effEnd = end > monthEnd ? monthEnd : end
+                const startDay = effStart.getDate()
+                const endDay = effEnd.getDate()
+                const barLeft = ((startDay - 1) / daysInMonth) * 100
+                const barWidth = Math.max(1.5, ((endDay - startDay + 1) / daysInMonth) * 100)
+                
+                const barColor = isFinished ? 'var(--green)' : isPaused ? 'var(--text-3)' : isOverdue ? 'var(--red)' : isInProgress ? 'var(--blue)' : 'var(--yellow)'
+                const barOpacity = isFinished ? 0.4 : isPaused ? 0.3 : 1
+                
+                return (
+                  <div key={idx} style={{ display: 'flex', alignItems: 'center', height: 26, borderBottom: '1px solid var(--border)' }}>
+                    <div style={{ width: 160, flexShrink: 0, fontSize: 11, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', paddingRight: 8 }} title={clean(item.special_name)}>
+                      {clean(item.special_name)}
+                    </div>
+                    <div style={{ flex: 1, position: 'relative', height: '100%' }}>
+                      {/* 日期网格线 */}
+                      {dayMarks.map(d => (
+                        <div key={d} style={{ position: 'absolute', left: `${((d - 1) / daysInMonth) * 100}%`, top: 0, bottom: 0, width: 1, background: 'var(--border)' }} />
+                      ))}
+                      {/* 甘特条 */}
+                      <div style={{
+                        position: 'absolute', left: `${barLeft}%`, width: `${barWidth}%`,
+                        top: 3, bottom: 3, background: barColor, opacity: barOpacity, borderRadius: 3,
+                        display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, color: '#fff', overflow: 'hidden',
+                      }}>
+                        {barWidth > 8 && (isFinished ? '✅' : isPaused ? '⏸' : isOverdue ? '⚠' : `${startDay}-${endDay}`)}
+                      </div>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        </div>
+      )
     }
-    // 生成12个月的标签和偏移
+    
+    // ===== 全年模式：12个月 =====
+    const ganttItems = allItems.slice(0, 20)
+    if (ganttItems.length === 0) return null
+    const baseYear = 2026, baseMonth = 0
     const ganttMonths = []
     for (let i = 0; i < 12; i++) {
       const d = new Date(baseYear, baseMonth + i, 1)
@@ -105,7 +193,7 @@ export default function Plans() {
 
     return (
       <div className="card" style={{ marginBottom: 16, overflow: 'hidden' }}>
-        <div className="card-header"><span className="card-title">甘特图（前20条）{selectedMonth ? `· ${selectedMonth}起` : '· 全年'}</span></div>
+        <div className="card-header"><span className="card-title">甘特图（前20条）· 全年</span></div>
         <div className="card-body" style={{ overflowX: 'auto' }}>
           <div style={{ minWidth: 900 }}>
             {/* 表头：任务名 + 12个月 */}
