@@ -12,14 +12,23 @@ from typing import Optional, AsyncGenerator
 
 router = APIRouter(prefix="/api/ai", tags=["AI对话"])
 
-AI_CONFIG = {
-    "model": os.environ.get("AI_MODEL", "qwen/qwen3.5-122b-a10b"),
-    "api_key": os.environ.get("AI_API_KEY", "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"),
-    "invoke_url": os.environ.get("AI_INVOKE_URL", "https://integrate.api.nvidia.com/v1/chat/completions"),
-    "max_tokens": int(os.environ.get("AI_MAX_TOKENS", "16384")),
-    "temperature": float(os.environ.get("AI_TEMPERATURE", "0.60")),
-    "top_p": 0.95,
-}
+def _load_ai_config():
+    """从环境变量加载AI配置，无API_KEY则报错"""
+    from backend.config import _load_dotenv
+    _load_dotenv()
+    api_key = os.environ.get("AI_API_KEY", "")
+    if not api_key:
+        raise RuntimeError("AI_API_KEY 未配置，请在 .env 文件中设置")
+    return {
+        "model": os.environ.get("AI_MODEL", "qwen/qwen3.5-122b-a10b"),
+        "api_key": api_key,
+        "invoke_url": os.environ.get("AI_INVOKE_URL", "https://integrate.api.nvidia.com/v1/chat/completions"),
+        "max_tokens": int(os.environ.get("AI_MAX_TOKENS", "16384")),
+        "temperature": float(os.environ.get("AI_TEMPERATURE", "0.60")),
+        "top_p": 0.95,
+    }
+
+AI_CONFIG = _load_ai_config()
 
 SYSTEM_PROMPT = """你是金鹰工单KPI管理系统的**项目数据分析AI**。
 
@@ -480,11 +489,11 @@ def build_db_context(db, project_id: int = None, query_month: str = None,
         else:
             ident_where = "1=0"
         
-        user_info = db.execute(text(f"""
+        user_info = db.execute(text("""
             SELECT p.employee_id, p.name, p.role, p.is_outsourcing, pr.name as project_name
             FROM personnel p LEFT JOIN projects pr ON p.project_id=pr.id 
-            WHERE {ident_where}
-        """), ident_params).fetchone()
+            WHERE p.employee_id = :eid OR p.name LIKE :nm
+        """), {"eid": uid, "nm": f"%{uname}%"}).fetchone()
         
         if user_info:
             is_out = "外包" if user_info[3] else "内部员工"
@@ -496,10 +505,18 @@ def build_db_context(db, project_id: int = None, query_month: str = None,
         lines.append("")
 
     # === 系统全貌 ===
-    total_projects = db.execute(text("SELECT COUNT(*) FROM projects")).scalar() or 0
-    total_personnel = db.execute(text("SELECT COUNT(*) FROM personnel WHERE status='在职'")).scalar() or 0
-    all_tickets = db.execute(text("SELECT COUNT(*) FROM work_tickets WHERE source='detail'")).scalar() or 0
-    all_snapshots = db.execute(text("SELECT COUNT(*) FROM snapshots")).scalar() or 0
+    # 系统全貌（4个COUNT合并为1个联合查询）
+    sys_stats = db.execute(text("""
+        SELECT
+          (SELECT COUNT(*) FROM projects) as total_projects,
+          (SELECT COUNT(*) FROM personnel WHERE status='在职') as total_personnel,
+          (SELECT COUNT(*) FROM work_tickets WHERE source='detail') as all_tickets,
+          (SELECT COUNT(*) FROM snapshots) as all_snapshots
+    """)).fetchone()
+    total_projects = sys_stats[0] or 0
+    total_personnel = sys_stats[1] or 0
+    all_tickets = sys_stats[2] or 0
+    all_snapshots = sys_stats[3] or 0
 
     lines.append(f"## 系统全貌")
     lines.append(f"- 项目总数: {total_projects} | 在职人员: {total_personnel}人 | 工单明细: {all_tickets:,}条 | 随手拍: {all_snapshots:,}条")
@@ -517,26 +534,46 @@ def build_db_context(db, project_id: int = None, query_month: str = None,
             lines.append(f"\n## 当前项目: {proj[0]} (ID:{project_id})")
             lines.append(f"- 面积: {area:,.0f}m² | 外包目标: {target:.0f}条/月")
 
-            # ---- 项目级汇总统计（按月份筛选）----
+            # ---- 项目级汇总统计（合并查询，4个SQL→1个）----
             params = {"pid": project_id, "m": _qmonth}
             
-            # 工单明细(work_tickets, source='detail')
-            wt_total = db.execute(text("SELECT COUNT(*) FROM work_tickets WHERE project_id=:pid AND source='detail' AND strftime('%Y-%m', create_time)=:m"), params).scalar() or 0
-            wt_done = db.execute(text("SELECT COUNT(*) FROM work_tickets WHERE project_id=:pid AND source='detail' AND strftime('%Y-%m', create_time)=:m AND order_status IN ('已完成','已关闭','已解决')"), params).scalar() or 0
-            wt_timely = db.execute(text("SELECT COUNT(*) FROM work_tickets WHERE project_id=:pid AND source='detail' AND strftime('%Y-%m', create_time)=:m AND order_status IN ('已完成','已关闭','已解决') AND deadline IS NOT NULL AND complete_time IS NOT NULL AND complete_time <= deadline"), params).scalar() or 0
-            
-            # 外包报修(brand IN 秩序报修,保洁报修)
-            out_cnt = db.execute(text("SELECT COUNT(*) FROM work_tickets WHERE project_id=:pid AND source='detail' AND brand IN ('秩序报修','保洁报修') AND strftime('%Y-%m', create_time)=:m"), params).scalar() or 0
+            # 工单明细统计合并：总数+完成+及时+外包，1次查询
+            wt_row = db.execute(text("""
+                SELECT
+                  COUNT(*) as total,
+                  SUM(CASE WHEN order_status IN ('已完成','已关闭','已解决') THEN 1 ELSE 0 END) as done,
+                  SUM(CASE WHEN order_status IN ('已完成','已关闭','已解决') AND deadline IS NOT NULL AND complete_time IS NOT NULL AND complete_time <= deadline THEN 1 ELSE 0 END) as timely,
+                  SUM(CASE WHEN brand IN ('秩序报修','保洁报修') THEN 1 ELSE 0 END) as outsource
+                FROM work_tickets
+                WHERE project_id=:pid AND source='detail' AND strftime('%Y-%m', create_time)=:m
+            """), params).fetchone()
+            wt_total = wt_row[0] or 0
+            wt_done = wt_row[1] or 0
+            wt_timely = wt_row[2] or 0
+            out_cnt = wt_row[3] or 0
 
-            # 随手拍(snapshots)
-            snap_month = db.execute(text("SELECT COUNT(*) FROM snapshots WHERE project_id=:pid AND strftime('%Y-%m', create_time)=:m"), params).scalar() or 0
-            snap_done_month = db.execute(text("SELECT COUNT(*) FROM snapshots WHERE project_id=:pid AND strftime('%Y-%m', create_time)=:m AND order_status IN ('已完成','已关闭','已解决')"), params).scalar() or 0
-            snap_all = db.execute(text("SELECT COUNT(*) FROM snapshots WHERE project_id=:pid"), {"pid": project_id}).scalar() or 0
+            # 随手拍统计合并：月总数+月完成+全量，1次查询
+            snap_row = db.execute(text("""
+                SELECT
+                  (SELECT COUNT(*) FROM snapshots WHERE project_id=:pid AND strftime('%Y-%m', create_time)=:m) as snap_month,
+                  (SELECT COUNT(*) FROM snapshots WHERE project_id=:pid AND strftime('%Y-%m', create_time)=:m AND order_status IN ('已完成','已关闭','已解决')) as snap_done,
+                  (SELECT COUNT(*) FROM snapshots WHERE project_id=:pid) as snap_all
+            """), params).fetchone()
+            snap_month = snap_row[0] or 0
+            snap_done_month = snap_row[1] or 0
+            snap_all = snap_row[2] or 0
 
-            # 人员
-            staff_cnt = db.execute(text("SELECT COUNT(*) FROM personnel WHERE project_id=:pid AND status='在职'"), {"pid": project_id}).scalar() or 0
-            internal_cnt = db.execute(text("SELECT COUNT(*) FROM personnel WHERE project_id=:pid AND status='在职' AND (is_outsourcing=0 OR is_outsourcing IS NULL)"), {"pid": project_id}).scalar() or 0
-            out_staff_cnt = db.execute(text("SELECT COUNT(*) FROM personnel WHERE project_id=:pid AND status='在职' AND is_outsourcing=1"), {"pid": project_id}).scalar() or 0
+            # 人员统计合并：在职+内部+外包，1次查询
+            staff_row = db.execute(text("""
+                SELECT
+                  COUNT(*) as total,
+                  SUM(CASE WHEN is_outsourcing=0 OR is_outsourcing IS NULL THEN 1 ELSE 0 END) as internal,
+                  SUM(CASE WHEN is_outsourcing=1 THEN 1 ELSE 0 END) as outsource
+                FROM personnel WHERE project_id=:pid AND status='在职'
+            """), {"pid": project_id}).fetchone()
+            staff_cnt = staff_row[0] or 0
+            internal_cnt = staff_row[1] or 0
+            out_staff_cnt = staff_row[2] or 0
 
             wt_cr = round(wt_done*100/wt_total, 1) if wt_total else 0
             wt_tr = round(wt_timely*100/wt_done, 1) if wt_done else 0
@@ -673,9 +710,17 @@ def build_db_context(db, project_id: int = None, query_month: str = None,
 
     # === 筹建专项汇总 (WY) ===
     try:
-        wy_total = db.execute(text("SELECT COUNT(*) FROM special_plans")).scalar() or 0
-        wy_completed = db.execute(text("SELECT COUNT(*) FROM special_plans WHERE finish_flag=1")).scalar() or 0
-        wy_paused = db.execute(text("SELECT COUNT(*) FROM special_plans WHERE pause_flag=1")).scalar() or 0
+        # WY统计合并（3次COUNT→1次）
+        wy_row = db.execute(text("""
+            SELECT
+              COUNT(*) as total,
+              SUM(CASE WHEN finish_flag=1 THEN 1 ELSE 0 END) as completed,
+              SUM(CASE WHEN pause_flag=1 THEN 1 ELSE 0 END) as paused
+            FROM special_plans
+        """)).fetchone()
+        wy_total = wy_row[0] or 0
+        wy_completed = wy_row[1] or 0
+        wy_paused = wy_row[2] or 0
         if wy_total > 0:
             lines.append(f"\n## 筹建专项汇总(WY)")
             lines.append(f"- 总专项数: {wy_total} | 已完成: {wy_completed} | 已暂停: {wy_paused}")
@@ -701,20 +746,34 @@ def build_db_context(db, project_id: int = None, query_month: str = None,
     # === IPMS设备任务汇总 ===
     try:
         from backend.models.ipms_task import IPMSTask
-        ipms_total = db.query(IPMSTask).count()
+        # IPMS统计合并（4次ORM查询→1次SQL）
+        from sqlalchemy import func, case
+        ipms_row = db.execute(text("""
+            SELECT
+              COUNT(*) as total,
+              SUM(CASE WHEN task_type='patrol' THEN 1 ELSE 0 END) as patrol,
+              SUM(CASE WHEN task_type='maintain' THEN 1 ELSE 0 END) as maintain,
+              SUM(CASE WHEN task_state_name IN ('完成','审核关闭') THEN 1 ELSE 0 END) as done
+            FROM ipms_tasks
+        """)).fetchone()
+        ipms_total = ipms_row[0] or 0
         if ipms_total > 0:
-            ipms_patrol = db.query(IPMSTask).filter(IPMSTask.task_type == 'patrol').count()
-            ipms_maintain = db.query(IPMSTask).filter(IPMSTask.task_type == 'maintain').count()
-            ipms_done = db.query(IPMSTask).filter(IPMSTask.task_state_name.in_(['完成', '审核关闭'])).count()
+            ipms_patrol = ipms_row[1] or 0
+            ipms_maintain = ipms_row[2] or 0
+            ipms_done = ipms_row[3] or 0
             lines.append(f"\n## IPMS设备任务汇总")
             lines.append(f"- 总任务数: {ipms_total} | 巡检: {ipms_patrol} | 维保: {ipms_maintain} | 已完成: {ipms_done}")
             
-            # 按执行人统计TOP15
-            from sqlalchemy import func
+            # 按执行人统计TOP15（合并total+done，消除N+1）
+            from sqlalchemy import func, case
             ipms_by_person = db.query(
                 IPMSTask.executor_name,
                 IPMSTask.task_type,
                 func.count(IPMSTask.id).label('total'),
+                func.sum(case(
+                    (IPMSTask.task_state_name.in_(['完成', '审核关闭']), 1),
+                    else_=0
+                )).label('done'),
             ).filter(
                 IPMSTask.executor_name.isnot(None),
                 IPMSTask.executor_name != ''
@@ -725,11 +784,7 @@ def build_db_context(db, project_id: int = None, query_month: str = None,
                 lines.append("| 执行人 | 类型 | 总数 | 已完成 |")
                 lines.append("|--------|------|------|--------|")
                 for ip in ipms_by_person:
-                    done_cnt = db.query(IPMSTask).filter(
-                        IPMSTask.executor_name == ip[0],
-                        IPMSTask.task_type == ip[1],
-                        IPMSTask.task_state_name.in_(['完成', '审核关闭'])
-                    ).count()
+                    done_cnt = int(ip[3] or 0)
                     lines.append(f"| {ip[0]} | {ip[1]} | {ip[2]} | {done_cnt} |")
     except Exception as e:
         lines.append(f"\n## IPMS设备任务 - 暂无可用数据")

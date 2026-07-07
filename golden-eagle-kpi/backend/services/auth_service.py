@@ -40,13 +40,16 @@ class AuthService:
         # 3. 查人力清单
         person = db.query(Personnel).filter(Personnel.employee_id == clean_id).first()
 
-        # 开发模式降级：人力清单为空或工号不存在时，允许登录为管理员
+        # 人力清单验证：工号必须存在（生产环境强制）
         if not person:
-            total_personnel = db.query(Personnel).count()
-            if total_personnel == 0:
-                # 人力清单为空（尚未导入），允许任意工号登录为管理员
-                person_name = f"开发用户({clean_id})"
-                system_role = "系统管理员"
+            if AppConfig.DEV_MODE:
+                # 开发模式：人力清单为空时允许任意工号登录为管理员
+                total_personnel = db.query(Personnel).count()
+                if total_personnel == 0:
+                    person_name = f"开发用户({clean_id})"
+                    system_role = "系统管理员"
+                else:
+                    return {"success": False, "error": "工号不存在于人力清单中", "code": 404}
             else:
                 return {"success": False, "error": "工号不存在于人力清单中", "code": 404}
         else:
@@ -60,8 +63,8 @@ class AuthService:
         # 5. 角色映射
         if person:
             system_role = AuthService._map_role(person.role, db)
-        elif not person and db.query(Personnel).count() == 0:
-            system_role = "系统管理员"
+        elif not person and system_role != "系统管理员":
+            system_role = "普通用户"
 
         # 6. 获取项目名称
         project = db.query(Project).filter(Project.id == pid).first() if pid else None

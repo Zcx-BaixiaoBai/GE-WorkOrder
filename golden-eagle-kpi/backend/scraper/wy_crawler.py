@@ -47,13 +47,19 @@ def _write_dicts_to_excel(data: List[Dict], filepath: str, columns: List[str] = 
     wb.save(filepath)
 
 
-# ============== 配置 ==============
-CONFIG = {
-    'base_url': 'http://58.213.109.123:8181',
-    'token': '9c3dbd4e-552b-48b3-af7a-e2431519e617',
-    'username': 'juhaifeng',
-    'password': 'jhf123456',
-}
+# ============== 配置（从环境变量读取） ==============
+import os as _os
+
+def _get_config():
+    """从环境变量加载WY配置"""
+    return {
+        'base_url': _os.environ.get('WY_BASE_URL', ''),
+        'token': _os.environ.get('WY_TOKEN', ''),
+        'username': _os.environ.get('WY_USERNAME', ''),
+        'password': _os.environ.get('WY_PASSWORD', ''),
+    }
+
+CONFIG = _get_config()
 
 # ============== 字段映射 ==============
 FIELD_MAP = {

@@ -5,20 +5,28 @@
 - BI 是 async（Playwright），在新事件循环中运行
 - WY/IPMS 是 sync（requests），直接在线程中运行
 - 状态动态聚合，不维护额外的全局状态
+- 同步互斥锁：防止多用户并发触发重复同步
 """
 
 import os
 import threading
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 from backend.services.sync_service import SyncService, _sync_status
 from backend.api.sync_wy import get_wy_sync_status, _wy_sync_status
 from backend.api.sync_ipms import get_ipms_status, _ipms_sync_status
+from backend.config import _load_dotenv
+from backend.api.auth_deps import require_super_admin
+
+_load_dotenv()
 
 router = APIRouter(prefix="/api/sync_all", tags=["聚合同步"])
 
-# 爬虫账号
-SCRAPER_ACCOUNT = os.environ.get("SCRAPER_ACCOUNT", "zhangchenxi")
-SCRAPER_PASSWORD = os.environ.get("SCRAPER_PASSWORD", "Zcx020618")
+# 全局同步互斥锁：防止多用户并发触发
+_sync_mutex = threading.Lock()
+
+# 爬虫账号（从环境变量读取，无默认值）
+SCRAPER_ACCOUNT = os.environ.get("SCRAPER_ACCOUNT", "")
+SCRAPER_PASSWORD = os.environ.get("SCRAPER_PASSWORD", "")
 
 
 def _trigger_bi():
@@ -164,7 +172,9 @@ def _trigger_ipms():
             _ipms_sync_status["message"] = "登录IPMS..."
 
             crawler = IPMSCrawler()
-            if not crawler.login("njjyadmin", "123654"):
+            _ipms_user = os.environ.get("IPMS_USERNAME", "")
+            _ipms_pass = os.environ.get("IPMS_PASSWORD", "")
+            if not crawler.login(_ipms_user, _ipms_pass):
                 _ipms_sync_status["message"] = "登录失败，请检查账号密码"
                 _ipms_sync_status["last_result"] = "error: login failed"
                 session.close()
@@ -287,22 +297,29 @@ def get_sync_all_status():
 
 
 @router.post("/start")
-def start_sync_all():
-    """同时触发三个系统同步"""
-    # 检查是否已有任意系统在同步
-    bi = SyncService.get_sync_status()
-    wy = get_wy_sync_status()
-    ipms = get_ipms_status()
+def start_sync_all(user: dict = Depends(require_super_admin)):
+    """同时触发三个系统同步（仅系统管理员，互斥锁防止多用户并发触发）"""
+    # 互斥锁：防止多用户同时点击同步
+    if not _sync_mutex.acquire(blocking=False):
+        return {"success": False, "error": "同步任务已被触发，请等待当前同步完成"}
 
-    if bi.get("isSyncing") or wy.get("is_syncing") or ipms.get("is_syncing"):
-        return {"success": False, "error": "有系统正在同步中，请稍后"}
+    try:
+        # 检查是否已有任意系统在同步
+        bi = SyncService.get_sync_status()
+        wy = get_wy_sync_status()
+        ipms = get_ipms_status()
 
-    # 同时触发三个系统
-    _trigger_bi()
-    _trigger_wy()
-    _trigger_ipms()
+        if bi.get("isSyncing") or wy.get("is_syncing") or ipms.get("is_syncing"):
+            return {"success": False, "error": "有系统正在同步中，请稍后"}
 
-    return {"success": True, "message": "三个系统同步已同时启动"}
+        # 同时触发三个系统
+        _trigger_bi()
+        _trigger_wy()
+        _trigger_ipms()
+
+        return {"success": True, "message": "三个系统同步已同时启动"}
+    finally:
+        _sync_mutex.release()
 
 
 # ============================================================

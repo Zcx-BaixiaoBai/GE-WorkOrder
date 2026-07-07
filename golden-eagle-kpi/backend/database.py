@@ -24,16 +24,21 @@ def init_engine():
     engine = create_engine(
         AppConfig.get_db_url(),
         connect_args={"check_same_thread": False},
+        pool_size=10,
+        max_overflow=20,
+        pool_pre_ping=True,
+        pool_recycle=3600,
         echo=False,
     )
 
-    # 启用WAL模式和外键约束
+    # 启用WAL模式和外键约束（多用户并发安全）
     @event.listens_for(engine, "connect")
     def set_sqlite_pragma(dbapi_conn, connection_record):
         cursor = dbapi_conn.cursor()
         cursor.execute("PRAGMA journal_mode=WAL")
         cursor.execute("PRAGMA foreign_keys=ON")
-        cursor.execute("PRAGMA busy_timeout=5000")
+        cursor.execute("PRAGMA busy_timeout=10000")  # 10秒防锁表
+        cursor.execute("PRAGMA synchronous=NORMAL")   # WAL模式下NORMAL足够安全且更快
         cursor.close()
 
     _SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
@@ -54,7 +59,7 @@ def init_database():
     from backend.models import (  # noqa: F401 - 需要导入以注册模型
         work_ticket, snapshot, personnel, project,
         sync_log, user_session, role_mapping, project_name_mapping,
-        project_manager
+        project_manager, sync_schedule_config
     )
 
     init_engine()

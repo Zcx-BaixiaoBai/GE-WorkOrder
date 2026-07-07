@@ -1,5 +1,5 @@
 """金鹰工单KPI管理 - API路由：认证"""
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Header
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 from backend.database import get_db
@@ -32,16 +32,21 @@ def login(req: LoginRequest, db: Session = Depends(get_db)):
 
 
 @router.post("/logout")
-def logout(token: str = None, db: Session = Depends(get_db)):
-    """登出"""
-    # 兼容query参数和header两种方式
+def logout(authorization: str = Header(None), db: Session = Depends(get_db)):
+    """登出（从Header获取token）"""
+    token = None
+    if authorization and authorization.startswith("Bearer "):
+        token = authorization[7:]
     AuthService.logout(token, db)
     return {"success": True}
 
 
 @router.get("/me")
-def get_current_user(token: str, db: Session = Depends(get_db)):
-    """获取当前用户信息"""
+def get_current_user(authorization: str = Header(None), db: Session = Depends(get_db)):
+    """获取当前用户信息（从Header获取token）"""
+    if not authorization or not authorization.startswith("Bearer "):
+        raise HTTPException(status_code=401, detail="未授权")
+    token = authorization[7:]
     user = AuthService.get_current_user(token, db)
     if not user:
         raise HTTPException(status_code=401, detail="未登录或Token已过期")

@@ -19,7 +19,11 @@ def _load_dotenv() -> None:
     if getattr(_load_dotenv, "_loaded", False):
         return
     _load_dotenv._loaded = True
-    dotenv_path = Path(__file__).resolve().parent.parent / ".env"
+    # frozen(exe)模式下，.env在exe同级目录；源码模式在项目根目录
+    if getattr(sys, 'frozen', False):
+        dotenv_path = Path(sys.executable).parent / ".env"
+    else:
+        dotenv_path = Path(__file__).resolve().parent.parent / ".env"
     if dotenv_path.exists():
         try:
             from dotenv import load_dotenv
@@ -66,10 +70,17 @@ class AppConfig:
     HOST = "127.0.0.1"
     PORT = 8765
 
-    # JWT配置 (环境变量: JWT_SECRET)
-    JWT_SECRET = _env("JWT_SECRET", "golden-eagle-kpi-secret-key-2026")
+    # JWT配置 (环境变量: JWT_SECRET，生产必须设置)
+    JWT_SECRET = _env("JWT_SECRET")  # 无默认值，缺失时报错
     JWT_ALGORITHM = "HS256"
     JWT_EXPIRE_HOURS = 8
+
+    # 开发模式 (DEV_MODE=1 时允许认证降级，生产环境必须为0)
+    DEV_MODE = _env("DEV_MODE", "0") == "1"
+
+    # 服务器模式
+    SERVER_HOST = _env("SERVER_HOST", "127.0.0.1")
+    SERVER_PORT = int(_env("SERVER_PORT", "8765"))
 
     # BI系统配置
     BI_LOGIN_URL = "http://bi.jinyeaglegroup.com/xxx"

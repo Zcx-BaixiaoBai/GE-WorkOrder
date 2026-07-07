@@ -1,11 +1,14 @@
 """金鹰工单KPI管理 - API路由：筹建专项同步"""
+import threading
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 from backend.database import get_db
+from backend.api.auth_deps import require_super_admin
 
 router = APIRouter(prefix="/api/sync_wy", tags=["筹建专项同步"])
 
+_wy_lock = threading.Lock()
 
 class SyncWYRequest(BaseModel):
     year: int | None = None
@@ -21,7 +24,8 @@ _wy_sync_status = {
 
 
 def get_wy_sync_status():
-    return _wy_sync_status
+    with _wy_lock:
+        return dict(_wy_sync_status)
 
 
 @router.get("/status")
@@ -31,8 +35,8 @@ def get_wy_status():
 
 
 @router.post("/sync")
-def sync_wy(request: SyncWYRequest = None, db: Session = Depends(get_db)):
-    """同步筹建专项数据"""
+def sync_wy(request: SyncWYRequest = None, db: Session = Depends(get_db), user: dict = Depends(require_super_admin)):
+    """同步筹建专项数据（仅系统管理员）"""
     global _wy_sync_status
 
     if _wy_sync_status["is_syncing"]:

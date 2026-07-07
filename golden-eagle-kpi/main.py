@@ -23,7 +23,8 @@ if getattr(sys, 'frozen', False):
 if getattr(sys, 'frozen', False):
     AppConfig.ensure_dirs()
     _log_file = AppConfig.LOGS_DIR / "app.log"
-    _file_handler = logging.FileHandler(_log_file, encoding="utf-8")
+    from logging.handlers import RotatingFileHandler
+    _file_handler = RotatingFileHandler(_log_file, maxBytes=10*1024*1024, backupCount=5, encoding="utf-8")
     _file_handler.setFormatter(logging.Formatter("%(asctime)s [%(levelname)s] %(message)s"))
     logging.root.addHandler(_file_handler)
     logging.root.setLevel(logging.INFO)
@@ -70,26 +71,40 @@ async def lifespan(app: FastAPI):
     # 确保导出目录存在
     AppConfig.ensure_dirs()
 
-    # 启动 APScheduler 定时同步（WY + IPMS，BI 需要浏览器不纳入定时）
+    # 启动 APScheduler 定时同步（从数据库动态读取配置）
     from apscheduler.schedulers.background import BackgroundScheduler
     from apscheduler.triggers.cron import CronTrigger
 
     scheduler = BackgroundScheduler(timezone="Asia/Shanghai")
-    # 每天 08:00 / 13:30 / 17:00 触发 WY + IPMS 同步
-    for hour, minute in [(8, 0), (13, 30), (17, 0)]:
-        scheduler.add_job(
-            _run_scheduled_sync,
-            CronTrigger(hour=hour, minute=minute, timezone="Asia/Shanghai"),
-            id=f"sync_wy_ipms_{hour}{minute}",
-            replace_existing=True,
-            kwargs={"systems": ["wy", "ipms"]},
-        )
     scheduler.start()
     app.state.scheduler = scheduler
-    print(f"[定时] APScheduler 已启动，WY/IPMS 同步时间: 08:00 / 13:30 / 17:00")
+
+    # 从数据库加载定时任务配置
+    _load_sync_schedule(scheduler)
+    print(f"[定时] APScheduler 已启动，配置从数据库动态加载")
+
+    # 会话清理定时任务（每日03:00清理过期会话）
+    from apscheduler.triggers.cron import CronTrigger as _CT
+    def _cleanup_expired_sessions():
+        from backend.database import get_session_local
+        from backend.models.user_session import UserSession
+        from datetime import datetime
+        db = get_session_local()()
+        try:
+            expired = db.query(UserSession).filter(UserSession.expires_at < datetime.now()).all()
+            for s in expired:
+                db.delete(s)
+            db.commit()
+            if expired:
+                print(f"[会话清理] 清理 {len(expired)} 个过期会话")
+        except Exception as e:
+            print(f"[会话清理] 失败: {e}")
+        finally:
+            db.close()
+    scheduler.add_job(_cleanup_expired_sessions, _CT(hour=3, minute=0, timezone="Asia/Shanghai"), id="cleanup_sessions", replace_existing=True)
 
     print(f"[启动] 金鹰工单KPI管理系统已启动")
-    print(f"[启动] 访问地址: http://{AppConfig.HOST}:{AppConfig.PORT}")
+    print(f"[启动] 访问地址: http://{AppConfig.SERVER_HOST}:{AppConfig.SERVER_PORT}")
     yield
 
     # 关闭时清理
@@ -100,28 +115,67 @@ async def lifespan(app: FastAPI):
 
 def create_app() -> FastAPI:
     """创建FastAPI应用"""
+    # CORS 白名单：本地 + 服务器模式下的外网访问
+    _cors_origins = [
+        "http://127.0.0.1:8765",
+        "http://localhost:8765",
+    ]
+    # 服务器模式：允许所有同源访问（前端和API同端口，CORS实际不拦截同源）
+    if AppConfig.SERVER_HOST == "0.0.0.0":
+        _cors_origins = ["*"]  # 服务器模式下前端与API同源，CORS不阻拦
+
     app = FastAPI(
         title="金鹰工单KPI管理",
         description="金鹰物业工单KPI管理系统后端API",
-        version="0.0.10",
+        version="1.1.0",
         lifespan=lifespan,
+        # 生产环境关闭 Swagger 文档
+        docs_url="/docs" if AppConfig.DEV_MODE else None,
+        redoc_url="/redoc" if AppConfig.DEV_MODE else None,
     )
 
-    # CORS（允许前端本地访问）
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=["*"],
+        allow_origins=_cors_origins,
         allow_credentials=False,
         allow_methods=["*"],
         allow_headers=["*"],
     )
 
-    # 根路径重定向到前端
+    # 客户端IP日志中间件
+    @app.middleware("http")
+    async def log_client_ip(request, call_next):
+        client_ip = request.client.host if request.client else "unknown"
+        # 服务器模式下记录外网访问
+        if AppConfig.SERVER_HOST == "0.0.0.0" and client_ip not in ("127.0.0.1", "::1", "unknown"):
+            print(f"[访问] {client_ip} -> {request.method} {request.url.path}")
+        response = await call_next(request)
+        return response
+
+    # 挂载前端静态文件目录（echarts.min.js等）
+    frontend_dir = AppConfig.FRONTEND_DIR
+    # React 构建产物目录（优先使用）
+    react_dist = frontend_dir / "react-dist"
+    static_dir = react_dist if react_dist.exists() else frontend_dir
+    if static_dir.exists():
+        app.mount("/static", StaticFiles(directory=str(static_dir)), name="static")
+    # React assets 目录
+    react_assets = react_dist / "assets"
+    if react_assets.exists():
+        app.mount("/assets", StaticFiles(directory=str(react_assets)), name="assets")
+
+    # 根路径：优先服务 React 构建产物，降级到旧版 index.html
     @app.get("/", include_in_schema=False)
     async def root():
-        frontend_dir = AppConfig.FRONTEND_DIR
-        if frontend_dir.exists() and (frontend_dir / "index.html").exists():
-            with open(frontend_dir / "index.html", "r", encoding="utf-8") as f:
+        # React 构建产物
+        react_index = react_dist / "index.html"
+        if react_index.exists():
+            with open(react_index, "r", encoding="utf-8") as f:
+                return HTMLResponse(f.read())
+        # 降级：旧版单文件前端
+        old_index = frontend_dir / "index.html"
+        if old_index.exists():
+            with open(old_index, "r", encoding="utf-8") as f:
                 return HTMLResponse(f.read())
         return RedirectResponse(url="/docs")
 
@@ -143,6 +197,7 @@ def create_app() -> FastAPI:
     from backend.api.wy import router as wy_router
     from backend.api.ipms import router as ipms_router
     from backend.api.project_manager import router as project_manager_router
+    from backend.api.sync_schedule_config import router as sync_schedule_router
 
     app.include_router(auth_router)
     app.include_router(stats_router)
@@ -161,19 +216,39 @@ def create_app() -> FastAPI:
     app.include_router(wy_router)
     app.include_router(ipms_router)
     app.include_router(project_manager_router)
+    app.include_router(sync_schedule_router)
 
-    # 关闭应用API
+    # 关闭应用API（需认证）
     import os
     import signal
+    from fastapi import Header
     
     @app.post("/api/shutdown")
-    def shutdown_app():
-        """关闭应用（前端+后端）"""
-        print("[关闭] 收到关闭请求")
-        # 杀掉自己
+    def shutdown_app(authorization: str = Header(None)):
+        """关闭应用（需JWT认证）"""
+        from backend.services.auth_service import AuthService
+        from backend.database import get_session_local
+        if not authorization or not authorization.startswith("Bearer "):
+            from fastapi import HTTPException
+            raise HTTPException(status_code=401, detail="未授权")
+        token = authorization[7:]
+        db = get_session_local()()
+        try:
+            user = AuthService.get_current_user(token, db)
+            if not user:
+                from fastapi import HTTPException
+                raise HTTPException(status_code=401, detail="Token无效或已过期")
+        finally:
+            db.close()
+        print(f"[关闭] 收到关闭请求 (用户: {user.get('name', 'unknown')})")
         pid = os.getpid()
         os.kill(pid, signal.SIGTERM)
         return {"success": True, "message": "应用正在关闭..."}
+
+    # 健康检查端点（无需认证）
+    @app.get("/api/health", include_in_schema=False)
+    def health_check():
+        return {"status": "ok", "version": "1.1.0", "host": AppConfig.SERVER_HOST, "port": AppConfig.SERVER_PORT}
 
     return app
 
@@ -181,11 +256,78 @@ def create_app() -> FastAPI:
 app = create_app()
 
 
+# ============================================================
+# 定时同步调度（从数据库动态加载配置）
+# ============================================================
+
+def _load_sync_schedule(scheduler):
+    """从数据库加载定时同步配置到 APScheduler"""
+    import json
+    from backend.database import get_session_local
+    from backend.models.sync_schedule_config import SyncScheduleConfig
+    from apscheduler.triggers.cron import CronTrigger
+
+    db = get_session_local()()
+    try:
+        # 确保默认配置存在
+        from backend.api.sync_schedule_config import _ensure_default_configs
+        _ensure_default_configs(db)
+
+        configs = db.query(SyncScheduleConfig).all()
+        for cfg in configs:
+            if not cfg.enabled:
+                continue
+            times = json.loads(cfg.cron_times) if cfg.cron_times else []
+            for time_str in times:
+                hour, minute = int(time_str.split(":")[0]), int(time_str.split(":")[1])
+                job_id = f"sync_{cfg.channel}_{hour:02d}{minute:02d}"
+                scheduler.add_job(
+                    _run_scheduled_sync,
+                    CronTrigger(hour=hour, minute=minute, timezone="Asia/Shanghai"),
+                    id=job_id,
+                    replace_existing=True,
+                    kwargs={"systems": [cfg.channel]},
+                )
+            if times:
+                print(f"[定时] {cfg.channel.upper()} 通道: {', '.join(times)}")
+    finally:
+        db.close()
+
+
+def _reschedule_sync_jobs():
+    """重新加载定时任务配置（配置更新后调用）"""
+    from backend.database import get_session_local
+    from backend.models.sync_schedule_config import SyncScheduleConfig
+
+    # 获取全局 app 的 scheduler
+    import main as _main
+    scheduler = getattr(_main.app.state, "scheduler", None) if hasattr(_main, "app") else None
+    if not scheduler:
+        print("[定时] 调度器未启动，跳过重载")
+        return
+
+    # 移除所有 sync_ 开头的 job
+    for job in scheduler.get_jobs():
+        if job.id.startswith("sync_"):
+            scheduler.remove_job(job.id)
+
+    # 重新加载
+    _load_sync_schedule(scheduler)
+    print("[定时] 定时任务配置已重新加载")
+
+
 def _run_scheduled_sync(systems=None):
-    """APScheduler 回调：触发 WY / IPMS 同步（线程中运行，不阻塞主线程）"""
+    """APScheduler 回调：触发同步（线程中运行，不阻塞主线程）
+    
+    支持三个通道：bi/wy/ipms，执行后更新数据库中的 last_run_time/last_run_result
+    """
     import threading
     from datetime import datetime
     systems = systems or ["wy", "ipms"]
+
+    def _sync_bi():
+        from backend.api.sync_all import _trigger_bi
+        _trigger_bi()
 
     def _sync_wy():
         from backend.api.sync_all import _trigger_wy
@@ -195,18 +337,42 @@ def _run_scheduled_sync(systems=None):
         from backend.api.sync_all import _trigger_ipms
         _trigger_ipms()
 
+    def _update_run_result(channel, result):
+        """更新数据库中的执行结果"""
+        try:
+            from backend.database import get_session_local
+            from backend.models.sync_schedule_config import SyncScheduleConfig
+            db = get_session_local()()
+            try:
+                cfg = db.query(SyncScheduleConfig).filter(SyncScheduleConfig.channel == channel).first()
+                if cfg:
+                    cfg.last_run_time = datetime.now()
+                    cfg.last_run_result = result
+                    db.commit()
+            finally:
+                db.close()
+        except Exception as e:
+            print(f"[定时同步] 更新执行结果失败: {e}")
+
     now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     print(f"[定时同步] 开始 ({now_str})")
 
     for sys_name in systems:
-        if sys_name == "wy":
+        if sys_name == "bi":
+            t = threading.Thread(target=_sync_bi, daemon=True)
+            t.start()
+            print("[定时同步] BI 工单已触发")
+            _update_run_result("bi", "triggered")
+        elif sys_name == "wy":
             t = threading.Thread(target=_sync_wy, daemon=True)
             t.start()
             print("[定时同步] WY 筹建专项已触发")
+            _update_run_result("wy", "triggered")
         elif sys_name == "ipms":
             t = threading.Thread(target=_sync_ipms, daemon=True)
             t.start()
             print("[定时同步] IPMS 巡检/维保已触发")
+            _update_run_result("ipms", "triggered")
 
     print(f"[定时同步] 全部触发完成 ({datetime.now().strftime('%Y-%m-%d %H:%M:%S')})")
 
@@ -215,8 +381,8 @@ if __name__ == "__main__":
     import uvicorn
     uvicorn.run(
         "main:app",
-        host=AppConfig.HOST,
-        port=AppConfig.PORT,
+        host=AppConfig.SERVER_HOST,
+        port=AppConfig.SERVER_PORT,
         reload=False,
         log_level="info",
     )

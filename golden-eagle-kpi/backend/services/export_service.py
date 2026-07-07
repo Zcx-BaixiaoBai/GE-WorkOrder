@@ -45,20 +45,25 @@ class ExportService:
 
         personnel_list = query.all()
 
+        # 批量查询工单数（消除N+1：一次GROUP BY替代逐人查询）
+        if month:
+            count_rows = db.execute(text(
+                "SELECT initiator_id, COUNT(*) as cnt FROM work_tickets "
+                "WHERE initiator_id IS NOT NULL "
+                "AND strftime('%Y-%m', create_time) = :month "
+                "GROUP BY initiator_id"
+            ), {"month": month}).fetchall()
+        else:
+            count_rows = db.execute(text(
+                "SELECT initiator_id, COUNT(*) as cnt FROM work_tickets "
+                "WHERE initiator_id IS NOT NULL "
+                "GROUP BY initiator_id"
+            )).fetchall()
+        count_map = {row[0]: row[1] for row in count_rows}
+
         row_idx = 2
         for person in personnel_list:
-            # 统计发起工单数
-            count_sql = text("SELECT COUNT(*) as cnt FROM work_tickets WHERE initiator_id = :eid")
-            params = {"eid": person.employee_id}
-            if month:
-                count_sql = text(
-                    "SELECT COUNT(*) as cnt FROM work_tickets WHERE initiator_id = :eid "
-                    "AND strftime('%Y-%m', create_time) = :month"
-                )
-                params["month"] = month
-
-            row = db.execute(count_sql, params).fetchone()
-            count = row.cnt if row else 0
+            count = count_map.get(person.employee_id, 0)
 
             data = [
                 person.employee_id,

@@ -34,3 +34,9 @@ node_modules/
 
 # WorkBuddy
 .workbuddy/
+".env"  
+"frontend/react-dist/"  
+"frontend/echarts.min.js"  
+"frontend-react/node_modules/"  
+"*.pyc"  
+"__pycache__/"  

@@ -35,6 +35,8 @@ _sync_status = {
     "last_sync_result": None,
 }
 
+# 状态读写锁：多用户并发安全
+_sync_lock = threading.Lock()
 # 进度更新锁：防止两个入库线程并发写 progress 导致进度条来回跳
 _progress_lock = threading.Lock()
 
@@ -43,7 +45,9 @@ class SyncService:
 
     @staticmethod
     def get_sync_status() -> dict:
-        last_time = _sync_status["last_sync_time"]
+        with _sync_lock:
+            last_time = _sync_status["last_sync_time"]
+            current = dict(_sync_status)  # 浅拷贝避免外部修改
         if not last_time:
             db = get_session_local()()
             try:
@@ -51,8 +55,8 @@ class SyncService:
             finally:
                 db.close()
         return {
-            "isSyncing": _sync_status["is_syncing"],
-            "currentTask": _sync_status["current_task"],
+            "isSyncing": current["is_syncing"],
+            "currentTask": current["current_task"],
             "progress": _sync_status["progress"],
             "message": _sync_status["message"],
             "lastSyncTime": last_time,

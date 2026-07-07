@@ -1,10 +1,18 @@
 """金鹰工单KPI管理 - API路由：IPMS设备管理同步"""
+import os
+import threading
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 from backend.database import get_db
+from backend.config import _load_dotenv
+from backend.api.auth_deps import require_super_admin
+
+_load_dotenv()
 
 router = APIRouter(prefix="/api/sync_ipms", tags=["IPMS同步"])
+
+_ipms_lock = threading.Lock()
 
 
 class SyncIPMSRequest(BaseModel):
@@ -23,6 +31,11 @@ _ipms_sync_status = {
 }
 
 
+def get_ipms_status():
+    with _ipms_lock:
+        return dict(_ipms_sync_status)
+
+
 @router.get("/status")
 def get_ipms_status():
     """获取同步状态"""
@@ -30,8 +43,8 @@ def get_ipms_status():
 
 
 @router.post("/sync")
-def sync_ipms(request: SyncIPMSRequest = None, db: Session = Depends(get_db)):
-    """同步IPMS数据"""
+def sync_ipms(request: SyncIPMSRequest = None, db: Session = Depends(get_db), user: dict = Depends(require_super_admin)):
+    """同步IPMS数据（仅系统管理员）"""
     global _ipms_sync_status
 
     if _ipms_sync_status["is_syncing"]:
@@ -50,8 +63,8 @@ def sync_ipms(request: SyncIPMSRequest = None, db: Session = Depends(get_db)):
     else:
         end_date = datetime.now().strftime("%Y-%m-%d")
 
-    username = (request.username or "njjyadmin").strip()
-    password = (request.password or "123654").strip()
+    username = (request.username or os.environ.get("IPMS_USERNAME", "")).strip()
+    password = (request.password or os.environ.get("IPMS_PASSWORD", "")).strip()
 
     def _run():
         global _ipms_sync_status

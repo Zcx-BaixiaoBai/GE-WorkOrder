@@ -7,7 +7,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <title>工单KPI</title>
-    <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
+    <script src="/static/echarts.min.js"></script>
     <style>
 * { margin: 0; padding: 0; box-sizing: border-box; }
 
@@ -568,7 +568,7 @@ body.tv-mode .card, body.tv-mode .kpi-card { box-shadow: none; }
             <div class="sidebar-header">
                 <div class="logo">
                     <div class="logo-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="8" y1="12" x2="16" y2="12"/><line x1="8" y1="8" x2="12" y2="8"/><line x1="8" y1="16" x2="14" y2="16"/></svg></div>
-                    <span>工单KPI</span><span class="app-version">v1.0.3</span>
+                    <span>工单KPI</span><span class="app-version">v1.1.0</span>
                 </div>
                 <span class="project-badge" id="sidebarProjectBadge">全部项目</span>
             </div>
@@ -618,7 +618,7 @@ body.tv-mode .card, body.tv-mode .kpi-card { box-shadow: none; }
         <header class="topbar" style="display:none;">
             <div class="logo">
                 <div class="logo-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="8" y1="12" x2="16" y2="12"/><line x1="8" y1="8" x2="12" y2="8"/><line x1="8" y1="16" x2="14" y2="16"/></svg></div>
-                <span>工单KPI</span><span class="app-version">v1.0.3</span>
+                <span>工单KPI</span><span class="app-version">v1.1.0</span>
             </div>
             <nav class="nav">
                 <button class="nav-btn active" onclick="goto('dashboard', this)">概览</button>
@@ -1223,6 +1223,64 @@ body.tv-mode .card, body.tv-mode .kpi-card { box-shadow: none; }
                 <button class="config-tab" onclick="setTab('cfg-kpi', this)">KPI配置</button>
                 <button class="config-tab" onclick="setTab('cfg-dict', this)">数据字典</button>
                 <button class="config-tab" onclick="setTab('cfg-pm', this)">项目负责人</button>
+                <button class="config-tab" onclick="setTab('cfg-sync', this)" id="cfg-sync-tab" style="display:none">定时任务</button>
+            </div>
+            
+            <!-- 定时任务配置（仅系统管理员可见） -->
+            <div class="config-content" id="cfg-sync" style="display:none">
+                <div style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap:16px; margin-bottom:16px;">
+                    <div class="card glass" id="sync-card-bi">
+                        <div class="card-header"><span class="card-title">BI 工单</span>
+                            <label class="toggle-switch" style="display:flex;align-items:center;gap:8px;">
+                                <input type="checkbox" id="sync-enabled-bi" onchange="saveSyncSchedule('bi')">
+                                <span style="font-size:11px;color:var(--text-3)">启用</span>
+                            </label>
+                        </div>
+                        <div class="card-body">
+                            <div style="font-size:11px;color:var(--text-3);margin-bottom:6px;">执行时间点（可多选）</div>
+                            <select id="sync-times-bi" multiple style="width:100%;min-height:120px;border:1px solid var(--border);border-radius:var(--radius);padding:6px;font-size:12px;background:var(--bg-card);color:var(--text);" onchange="saveSyncSchedule('bi')"></select>
+                            <div style="margin-top:10px;font-size:11px;">
+                                <div style="color:var(--text-3)">上次执行: <span id="sync-last-bi">-</span></div>
+                                <div style="color:var(--text-3)">执行结果: <span id="sync-result-bi">-</span></div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card glass" id="sync-card-wy">
+                        <div class="card-header"><span class="card-title">WY 筹建专项</span>
+                            <label class="toggle-switch" style="display:flex;align-items:center;gap:8px;">
+                                <input type="checkbox" id="sync-enabled-wy" onchange="saveSyncSchedule('wy')">
+                                <span style="font-size:11px;color:var(--text-3)">启用</span>
+                            </label>
+                        </div>
+                        <div class="card-body">
+                            <div style="font-size:11px;color:var(--text-3);margin-bottom:6px;">执行时间点（可多选）</div>
+                            <select id="sync-times-wy" multiple style="width:100%;min-height:120px;border:1px solid var(--border);border-radius:var(--radius);padding:6px;font-size:12px;background:var(--bg-card);color:var(--text);" onchange="saveSyncSchedule('wy')"></select>
+                            <div style="margin-top:10px;font-size:11px;">
+                                <div style="color:var(--text-3)">上次执行: <span id="sync-last-wy">-</span></div>
+                                <div style="color:var(--text-3)">执行结果: <span id="sync-result-wy">-</span></div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card glass" id="sync-card-ipms">
+                        <div class="card-header"><span class="card-title">IPMS 设备</span>
+                            <label class="toggle-switch" style="display:flex;align-items:center;gap:8px;">
+                                <input type="checkbox" id="sync-enabled-ipms" onchange="saveSyncSchedule('ipms')">
+                                <span style="font-size:11px;color:var(--text-3)">启用</span>
+                            </label>
+                        </div>
+                        <div class="card-body">
+                            <div style="font-size:11px;color:var(--text-3);margin-bottom:6px;">执行时间点（可多选）</div>
+                            <select id="sync-times-ipms" multiple style="width:100%;min-height:120px;border:1px solid var(--border);border-radius:var(--radius);padding:6px;font-size:12px;background:var(--bg-card);color:var(--text);" onchange="saveSyncSchedule('ipms')"></select>
+                            <div style="margin-top:10px;font-size:11px;">
+                                <div style="color:var(--text-3)">上次执行: <span id="sync-last-ipms">-</span></div>
+                                <div style="color:var(--text-3)">执行结果: <span id="sync-result-ipms">-</span></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div style="font-size:11px;color:var(--text-3);padding:8px 0;">
+                    提示：BI 工单同步需要浏览器环境，建议仅在服务器有 Chrome 时启用。WY/IPMS 通过 HTTP API 同步，适合定时执行。
+                </div>
             </div>
             
             <div class="config-content active" id="cfg-import">
@@ -1994,13 +2052,13 @@ body.tv-mode .card, body.tv-mode .kpi-card { box-shadow: none; }
 
     <!-- AI 对话浮窗 -->
     <div class="ai-chat-overlay" id="aiChatOverlay" onclick="closeAIChat(event)">
-        <div class="ai-chat-window glass" onclick="event.stopPropagation()">
+        <div class="ai-chat-window" onclick="event.stopPropagation()">
             <div class="ai-chat-header">
                 <div class="ai-chat-title">
                     <span class="ai-chat-icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M12 2L14.5 9.5L22 12L14.5 14.5L12 22L9.5 14.5L2 12L9.5 9.5Z" fill="currentColor"/></svg></span>
                     <div>
                         <div class="ai-chat-name">金鹰AI助手</div>
-                        <div class="ai-chat-sub">基于本系统数据库 · 专注KPI分析</div>
+                        <div class="ai-chat-sub" id="aiContextInfo">基于本系统数据库 · 专注KPI分析</div>
                     </div>
                 </div>
                 <div class="ai-chat-controls">
@@ -2015,9 +2073,6 @@ body.tv-mode .card, body.tv-mode .kpi-card { box-shadow: none; }
                         您好！我是金鹰AI助手，可以帮您分析工单数据、KPI完成率、人员绩效、预警情况等。请问有什么可以帮您？
                     </div>
                 </div>
-            </div>
-            <div class="ai-chat-context" id="aiContextInfo">
-                当前项目: 全部项目 · 全部月份
             </div>
             <div class="ai-chat-input-wrap">
                 <textarea class="ai-chat-input" id="aiInput" placeholder="输入问题，按Enter发送..." rows="1"
@@ -2074,7 +2129,7 @@ body.tv-mode .card, body.tv-mode .kpi-card { box-shadow: none; }
         // 全局配置与状态管理
         // ==========================================
         const CONFIG = {
-            API_BASE_URL: 'http://localhost:8765',  // 本地FastAPI服务
+            API_BASE_URL: '',  // 空字符串=相对路径，前端与API同源，自动适配本地/外网
             USE_MOCK: false,  // true=使用模拟数据, false=调用真实API
             THEME_KEY: 'theme_preference',
             LAST_SYNC_KEY: 'last_sync_time',
@@ -2126,10 +2181,16 @@ body.tv-mode .card, body.tv-mode .kpi-card { box-shadow: none; }
                 };
             },
 
-            // 判断是否为管理员
+            // 判断是否为系统管理员（最高权限）
             isAdmin() {
                 const role = localStorage.getItem('user_role');
-                return role === '系统管理员' || role === 'admin';
+                return role === '系统管理员' || role === 'super_admin';
+            },
+
+            // 判断是否为项目管理员（可管理本项目数据）
+            isProjectAdmin() {
+                const role = localStorage.getItem('user_role');
+                return ['系统管理员', 'super_admin', '项目负责人', 'project_admin'].includes(role);
             },
 
             // 判断是否为项目负责人
@@ -2144,10 +2205,9 @@ body.tv-mode .card, body.tv-mode .kpi-card { box-shadow: none; }
                 return role === '部门管理' || role === '项目负责人' || role === '系统管理员';
             },
 
-            // 判断是否可操作配置
+            // 判断是否可操作系统配置（仅系统管理员）
             canManageConfig() {
-                const role = localStorage.getItem('user_role');
-                return ['系统管理员', '项目负责人', '部门管理'].includes(role);
+                return this.isAdmin();
             },
 
             // 判断是否可查看所有项目
@@ -2155,9 +2215,25 @@ body.tv-mode .card, body.tv-mode .kpi-card { box-shadow: none; }
                 return this.isAdmin();
             },
 
-            // 判断是否可触发同步（所有登录用户均可）
+            // 判断是否可触发同步（仅系统管理员）
             canTriggerSync() {
-                return !!localStorage.getItem('auth_token');
+                return this.isAdmin();
+            },
+
+            // 判断是否可管理定时任务（仅系统管理员）
+            canManageSyncSchedule() {
+                return this.isAdmin();
+            },
+
+            // 判断是否可导出数据
+            canExport() {
+                const role = localStorage.getItem('user_role');
+                return ['系统管理员', '项目负责人', '部门管理'].includes(role);
+            },
+
+            // 判断是否可编辑人员（项目管理员以上）
+            canEditPersonnel() {
+                return this.isProjectAdmin();
             },
 
             // 获取请求头（包含认证Token）
@@ -2858,6 +2934,12 @@ body.tv-mode .card, body.tv-mode .kpi-card { box-shadow: none; }
                 hideConfigTab('KPI配置');
             }
             
+            // 定时任务 - 仅系统管理员可见
+            const syncTab = document.getElementById('cfg-sync-tab');
+            if (syncTab) {
+                syncTab.style.display = AUTH.isAdmin() ? '' : 'none';
+            }
+            
             // 控制同步按钮显示
             const syncBtn = document.getElementById('syncBtn');
             if (syncBtn && !AUTH.canTriggerSync()) {
@@ -2915,7 +2997,10 @@ body.tv-mode .card, body.tv-mode .kpi-card { box-shadow: none; }
         async function shutdownApp() {
             if (!confirm('确定要关闭应用吗？这将同时关闭前端和后端。')) return;
             try {
-                await fetch('http://127.0.0.1:8765/api/shutdown', { method: 'POST' });
+                await fetch('/api/shutdown', { 
+                    method: 'POST',
+                    headers: { 'Authorization': 'Bearer ' + (localStorage.getItem('auth_token') || '') }
+                });
             } catch (e) {
                 // 忽略错误
             }
@@ -5658,6 +5743,89 @@ async function loadWarnings() {
                     loadPMData();
                     populatePMSelect();
                 });
+            }
+            if (id === 'cfg-sync') loadSyncSchedule();
+        }
+
+        // ============================================================
+        // 定时任务配置
+        // ============================================================
+        let _syncScheduleLoaded = false;
+
+        function _initSyncTimeOptions() {
+            const times = [];
+            for (let h = 0; h < 24; h++) {
+                for (const m of [0, 30]) {
+                    times.push(`${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}`);
+                }
+            }
+            ['bi', 'wy', 'ipms'].forEach(ch => {
+                const sel = document.getElementById(`sync-times-${ch}`);
+                if (sel && sel.options.length === 0) {
+                    sel.innerHTML = times.map(t => `<option value="${t}">${t}</option>`).join('');
+                }
+            });
+        }
+
+        async function loadSyncSchedule() {
+            _initSyncTimeOptions();
+            if (_syncScheduleLoaded) return;
+            _syncScheduleLoaded = true;
+            try {
+                const token = localStorage.getItem('auth_token') || '';
+                const res = await fetch('/api/config/sync-schedule', {
+                    headers: { 'Authorization': 'Bearer ' + token }
+                });
+                if (!res.ok) return;
+                const data = await res.json();
+                (data.items || []).forEach(cfg => {
+                    const ch = cfg.channel;
+                    const enabledEl = document.getElementById(`sync-enabled-${ch}`);
+                    const timesEl = document.getElementById(`sync-times-${ch}`);
+                    const lastEl = document.getElementById(`sync-last-${ch}`);
+                    const resultEl = document.getElementById(`sync-result-${ch}`);
+                    if (enabledEl) enabledEl.checked = cfg.enabled;
+                    if (timesEl) {
+                        Array.from(timesEl.options).forEach(opt => {
+                            opt.selected = (cfg.cron_times || []).includes(opt.value);
+                        });
+                    }
+                    if (lastEl) lastEl.textContent = cfg.last_run_time ? cfg.last_run_time.replace('T', ' ').substring(0, 16) : '-';
+                    if (resultEl) resultEl.textContent = cfg.last_run_result || '-';
+                });
+            } catch (e) {
+                console.error('加载定时配置失败:', e);
+            }
+        }
+
+        async function saveSyncSchedule(channel) {
+            const enabled = document.getElementById(`sync-enabled-${channel}`).checked;
+            const timesEl = document.getElementById(`sync-times-${channel}`);
+            const cronTimes = Array.from(timesEl.selectedOptions).map(o => o.value);
+            if (cronTimes.length === 0 && enabled) {
+                showToast('请至少选择一个时间点');
+                document.getElementById(`sync-enabled-${channel}`).checked = false;
+                return;
+            }
+            try {
+                const token = localStorage.getItem('auth_token') || '';
+                const res = await fetch(`/api/config/sync-schedule/${channel}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Authorization': 'Bearer ' + token,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ enabled, cron_times: cronTimes })
+                });
+                if (res.ok) {
+                    showToast(`${channel.toUpperCase()} 定时配置已保存`);
+                } else if (res.status === 403) {
+                    showToast('需要系统管理员权限');
+                } else {
+                    showToast('保存失败');
+                }
+            } catch (e) {
+                showToast('网络错误');
             }
         }
         
