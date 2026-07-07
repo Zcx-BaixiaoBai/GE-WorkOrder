@@ -114,7 +114,7 @@ export default function Plans() {
               <div style={{ flex: 1, display: 'flex' }}>
                 {ganttMonths.map((m, i) => (
                   <div key={i} style={{ flex: 1, fontSize: 11, color: 'var(--text-3)', textAlign: 'center', borderLeft: '1px solid var(--border)' }}>
-                    {m.label}{m.month === 0 ? <span style="color: 'var(--text-2)">'{String(m.year).slice(-2)}</span> : ''}
+                    {m.label}{m.month === 0 ? <span style={{ color: 'var(--text-2)' }}>'{String(m.year).slice(-2)}</span> : ''}
                   </div>
                 ))}
               </div>
