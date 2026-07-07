@@ -7,10 +7,16 @@ export default function Personnel() {
   const [pageSize] = useState(20)
   const [roleFilter, setRoleFilter] = useState('')
   const [keyword, setKeyword] = useState('')
+  const [selectedMonth, setSelectedMonth] = useState('')
+  const [months, setMonths] = useState([])
   const [loading, setLoading] = useState(false)
   const [editing, setEditing] = useState(null)
   const [showImport, setShowImport] = useState(false)
   const projectId = localStorage.getItem('user_project_id') || ''
+
+  useEffect(() => {
+    api.get('/api/stats/months', { params: { projectId } }).then(r => setMonths(r.data.months || [])).catch(() => {})
+  }, [projectId])
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -18,11 +24,12 @@ export default function Personnel() {
       const params = { page, pageSize, projectId }
       if (keyword) params.keyword = keyword
       if (roleFilter) params.role = roleFilter
+      if (selectedMonth) params.month = selectedMonth
       const res = await api.get('/api/personnel/list', { params })
       setData(res.data)
     } catch (err) { console.error('Personnel load error:', err) }
     setLoading(false)
-  }, [page, pageSize, projectId, keyword, roleFilter])
+  }, [page, pageSize, projectId, keyword, roleFilter, selectedMonth])
 
   useEffect(() => { load() }, [load])
 
@@ -69,6 +76,10 @@ export default function Personnel() {
         <select className="select" value={roleFilter} onChange={e => { setRoleFilter(e.target.value); setPage(1) }}>
           <option value="">全部角色</option><option value="项目负责人">项目负责人</option>
           <option value="部门管理">部门管理</option><option value="一线员工">一线员工</option><option value="外包">外包</option>
+        </select>
+        <select className="select" value={selectedMonth} onChange={e => { setSelectedMonth(e.target.value); setPage(1) }}>
+          <option value="">全部月份</option>
+          {months.map(m => <option key={m} value={m}>{m}</option>)}
         </select>
         <button className="btn btn-primary btn-sm" onClick={() => { setPage(1); load() }}>搜索</button>
       </div>

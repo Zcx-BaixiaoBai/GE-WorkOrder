@@ -11,8 +11,14 @@ export default function Plans() {
   const [page, setPage] = useState(1)
   const [pageSize] = useState(50)
   const [stateFilter, setStateFilter] = useState('')
+  const [selectedMonth, setSelectedMonth] = useState('')
+  const [months, setMonths] = useState([])
   const [loading, setLoading] = useState(false)
   const projectId = localStorage.getItem('user_project_id') || ''
+
+  useEffect(() => {
+    api.get('/api/stats/months', { params: { projectId } }).then(r => setMonths(r.data.months || [])).catch(() => {})
+  }, [projectId])
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -22,10 +28,11 @@ export default function Plans() {
         if (tab === 'wy') params.plan_state = stateFilter
         else params.task_state_name = stateFilter
       }
+      if (selectedMonth) params.month = selectedMonth
       if (tab === 'wy') {
         const [listRes, statsRes] = await Promise.all([
           api.get('/api/wy/plans', { params }),
-          api.get('/api/wy/stats', { params: { projectId } }),
+          api.get('/api/wy/stats', { params: { projectId, ...(selectedMonth && { month: selectedMonth }) } }),
         ])
         setData(listRes.data)
         setStats(statsRes.data)
@@ -33,14 +40,14 @@ export default function Plans() {
         params.task_type = tab
         const [listRes, statsRes] = await Promise.all([
           api.get('/api/ipms/tasks', { params }),
-          api.get('/api/ipms/stats', { params: { task_type: tab, projectId } }),
+          api.get('/api/ipms/stats', { params: { task_type: tab, projectId, ...(selectedMonth && { month: selectedMonth }) } }),
         ])
         setData(listRes.data)
         setStats(statsRes.data)
       }
     } catch (err) { console.error('Plans load error:', err) }
     setLoading(false)
-  }, [tab, page, pageSize, projectId, stateFilter])
+  }, [tab, page, pageSize, projectId, stateFilter, selectedMonth])
 
   useEffect(() => { load() }, [load])
   const totalPages = Math.ceil(data.total / pageSize) || 1
@@ -84,6 +91,10 @@ export default function Plans() {
       {renderStatsCards()}
 
       <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
+        <select className="select" value={selectedMonth} onChange={e => { setSelectedMonth(e.target.value); setPage(1) }}>
+          <option value="">全部月份</option>
+          {months.map(m => <option key={m} value={m}>{m}</option>)}
+        </select>
         {tab === 'wy' ? (
           <select className="select" value={stateFilter} onChange={e => { setStateFilter(e.target.value); setPage(1) }}>
             <option value="">全部状态</option>

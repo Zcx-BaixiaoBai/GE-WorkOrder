@@ -9,9 +9,13 @@ export default function Tickets() {
   const [detail, setDetail] = useState(null)
   const [loading, setLoading] = useState(false)
   const [projects, setProjects] = useState([])
+  const [months, setMonths] = useState([])
   const projectId = localStorage.getItem('user_project_id') || ''
 
-  useEffect(() => { api.get('/api/config/projects').then(r => setProjects(r.data.items || [])).catch(() => {}) }, [])
+  useEffect(() => {
+    api.get('/api/config/projects').then(r => setProjects(r.data.items || [])).catch(() => {})
+    api.get('/api/stats/months', { params: { projectId } }).then(r => setMonths(r.data.months || [])).catch(() => {})
+  }, [projectId])
 
   const loadTickets = useCallback(async () => {
     setLoading(true)
@@ -59,7 +63,7 @@ export default function Tickets() {
         </select>
         <select className="select" value={filters.month} onChange={e => setFilters({ ...filters, month: e.target.value })}>
           <option value="">全部月份</option>
-          {['2026-06','2026-05','2026-04','2026-03','2026-02','2026-01'].map(m => <option key={m} value={m}>{m}</option>)}
+          {months.map(m => <option key={m} value={m}>{m}</option>)}
         </select>
         <select className="select" value={filters.ticketType} onChange={e => setFilters({ ...filters, ticketType: e.target.value })}>
           <option value="">全部类型</option><option value="物业维修">物业维修</option>
