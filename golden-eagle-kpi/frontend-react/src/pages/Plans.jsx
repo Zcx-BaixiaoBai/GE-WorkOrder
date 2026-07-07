@@ -1,12 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react'
 import api from '../services/api'
 
-const TABS = [
-  { key: 'wy', label: '金鹰PLAN' },
-  { key: 'patrol', label: '巡检任务' },
-  { key: 'maintain', label: '维保任务' },
-]
-
+const TABS = [{ key: 'wy', label: '金鹰PLAN' }, { key: 'patrol', label: '巡检任务' }, { key: 'maintain', label: '维保任务' }]
 const WY_STATES = ['即将开始','进行中','即将到期','到期预警','逾期报警','已逾期','已完成','已暂停']
 
 export default function Plans() {
@@ -48,55 +43,46 @@ export default function Plans() {
   }, [tab, page, pageSize, projectId, stateFilter])
 
   useEffect(() => { load() }, [load])
-
   const totalPages = Math.ceil(data.total / pageSize) || 1
-
-  // WY甘特图数据
   const ganttItems = (data.items || []).slice(0, 15)
   const today = new Date()
 
+  // WY stats字段: total, in_progress, expiring, overdue, finished, paused
+  // IPMS stats字段: total, in_progress, finished, overdue
   const renderStatsCards = () => {
     if (!stats) return null
     if (tab === 'wy') {
-      const s = stats
       return (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12, marginBottom: 16 }}>
-          <StatCard label="总专项" value={s.total || 0} />
-          <StatCard label="进行中" value={s.active || s.ongoing || 0} color="green" />
-          <StatCard label="已逾期" value={s.overdue || 0} color="red" />
-          <StatCard label="已完成" value={s.completed || 0} color="blue" />
-        </div>
-      )
-    } else {
-      const s = stats
-      return (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12, marginBottom: 16 }}>
-          <StatCard label="总任务" value={s.total || 0} />
-          <StatCard label="进行中" value={s.active || s.ongoing || 0} color="green" />
-          <StatCard label="已完成" value={s.completed || s.done || 0} color="blue" />
-          <StatCard label="已逾期" value={s.overdue || 0} color="red" />
+          <StatCard label="总专项" value={stats.total || 0} />
+          <StatCard label="进行中" value={stats.in_progress || 0} color="green" />
+          <StatCard label="已逾期" value={stats.overdue || 0} color="red" />
+          <StatCard label="已完成" value={stats.finished || 0} color="blue" />
         </div>
       )
     }
+    return (
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12, marginBottom: 16 }}>
+        <StatCard label="总任务" value={stats.total || 0} />
+        <StatCard label="进行中" value={stats.in_progress || 0} color="green" />
+        <StatCard label="已完成" value={stats.finished || 0} color="blue" />
+        <StatCard label="已逾期" value={stats.overdue || 0} color="red" />
+      </div>
+    )
   }
 
   return (
     <div>
       <h2 style={{ fontSize: 18, fontWeight: 600, marginBottom: 16 }}>计划管理</h2>
 
-      {/* Tab 切换 */}
       <div className="config-tabs" style={{ marginBottom: 16 }}>
         {TABS.map(t => (
-          <button key={t.key} className={`config-tab ${tab === t.key ? 'active' : ''}`} onClick={() => { setTab(t.key); setPage(1); setStateFilter('') }}>
-            {t.label}
-          </button>
+          <button key={t.key} className={`config-tab ${tab === t.key ? 'active' : ''}`} onClick={() => { setTab(t.key); setPage(1); setStateFilter('') }}>{t.label}</button>
         ))}
       </div>
 
-      {/* 统计卡片 */}
       {renderStatsCards()}
 
-      {/* 筛选栏 */}
       <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
         {tab === 'wy' ? (
           <select className="select" value={stateFilter} onChange={e => { setStateFilter(e.target.value); setPage(1) }}>
@@ -123,22 +109,15 @@ export default function Plans() {
               {ganttItems.map((item, i) => {
                 const start = item.plan_start_date ? new Date(item.plan_start_date) : null
                 const end = item.plan_end_date ? new Date(item.plan_end_date) : null
-                if (!start || !end) return <div key={i} style={{ fontSize: 12 }}>{item.special_name || item.plan_content || '-'}: 日期无效</div>
-                const months = (end.getFullYear() - start.getFullYear()) * 12 + (end.getMonth() - start.getMonth()) + 1
+                if (!start || !end) return <div key={i} style={{ fontSize: 12 }}>{item.special_name || '-'}: 日期无效</div>
                 const leftPct = ((start.getMonth() + 1) / 12) * 50
-                const widthPct = Math.max(5, (months / 12) * 50)
+                const widthPct = Math.max(5, ((end - start) / (1000 * 60 * 60 * 24 * 365)) * 50)
                 const isOverdue = end < today && item.finish_flag !== 1
                 return (
                   <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <div style={{ width: 160, fontSize: 12, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flexShrink: 0 }}>
-                      {item.special_name || item.plan_content || '-'}
-                    </div>
+                    <div style={{ width: 160, fontSize: 12, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flexShrink: 0 }}>{item.special_name || '-'}</div>
                     <div style={{ flex: 1, position: 'relative', height: 20, background: 'var(--bg-hover)', borderRadius: 4 }}>
-                      <div style={{
-                        position: 'absolute', left: `${leftPct}%`, width: `${widthPct}%`, height: '100%',
-                        background: isOverdue ? 'var(--red)' : 'var(--blue)', borderRadius: 4,
-                        opacity: item.finish_flag === 1 ? 0.4 : 1,
-                      }} />
+                      <div style={{ position: 'absolute', left: `${leftPct}%`, width: `${widthPct}%`, height: '100%', background: isOverdue ? 'var(--red)' : 'var(--blue)', borderRadius: 4, opacity: item.finish_flag === 1 ? 0.4 : 1 }} />
                     </div>
                     <span style={{ fontSize: 11, color: 'var(--text-3)', flexShrink: 0 }}>{item.plan_end_date || ''}</span>
                   </div>
@@ -154,17 +133,15 @@ export default function Plans() {
         <div style={{ overflowX: 'auto' }}>
           {tab === 'wy' ? (
             <table className="table">
-              <thead>
-                <tr><th>专项名称</th><th>项目</th><th>责任人</th><th>计划开始</th><th>计划完成</th><th>状态</th><th>完成</th></tr>
-              </thead>
+              <thead><tr><th>专项名称</th><th>项目</th><th>责任人</th><th>计划开始</th><th>计划完成</th><th>状态</th><th>完成</th></tr></thead>
               <tbody>
                 {loading ? <tr><td colSpan={7} style={{ textAlign: 'center', padding: 40, color: 'var(--text-3)' }}>加载中...</td></tr>
                 : data.items.length === 0 ? <tr><td colSpan={7} style={{ textAlign: 'center', padding: 40, color: 'var(--text-3)' }}>无数据</td></tr>
                 : data.items.map((item, i) => (
                   <tr key={i}>
-                    <td style={{ maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.special_name || item.plan_content || '-'}</td>
+                    <td style={{ maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.special_name || '-'}</td>
                     <td>{item.project_name || '-'}</td>
-                    <td>{item.person_name || item.plan_person || '-'}</td>
+                    <td>{item.person_name || '-'}</td>
                     <td style={{ fontSize: 12 }}>{item.plan_start_date || '-'}</td>
                     <td style={{ fontSize: 12 }}>{item.plan_end_date || '-'}</td>
                     <td>{item.plan_state ? <span className={`badge ${item.plan_state.includes('逾期') ? 'badge-red' : item.plan_state === '已完成' ? 'badge-green' : 'badge-blue'}`}>{item.plan_state}</span> : '-'}</td>
@@ -174,29 +151,26 @@ export default function Plans() {
               </tbody>
             </table>
           ) : (
+            // IPMS字段: task_name, project_name, user_name, start_time, end_time, task_state_name
             <table className="table">
-              <thead>
-                <tr><th>任务名称</th><th>项目</th><th>执行人</th><th>开始时间</th><th>结束时间</th><th>状态</th><th>结果</th></tr>
-              </thead>
+              <thead><tr><th>任务名称</th><th>项目</th><th>执行人</th><th>开始时间</th><th>结束时间</th><th>状态</th></tr></thead>
               <tbody>
-                {loading ? <tr><td colSpan={7} style={{ textAlign: 'center', padding: 40, color: 'var(--text-3)' }}>加载中...</td></tr>
-                : data.items.length === 0 ? <tr><td colSpan={7} style={{ textAlign: 'center', padding: 40, color: 'var(--text-3)' }}>无数据</td></tr>
+                {loading ? <tr><td colSpan={6} style={{ textAlign: 'center', padding: 40, color: 'var(--text-3)' }}>加载中...</td></tr>
+                : data.items.length === 0 ? <tr><td colSpan={6} style={{ textAlign: 'center', padding: 40, color: 'var(--text-3)' }}>无数据</td></tr>
                 : data.items.map((item, i) => (
                   <tr key={i}>
-                    <td style={{ maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.task_name || item.name || '-'}</td>
+                    <td style={{ maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.task_name || '-'}</td>
                     <td>{item.project_name || '-'}</td>
-                    <td>{item.executor_name || item.user_name || '-'}</td>
+                    <td>{item.user_name || '-'}</td>
                     <td style={{ fontSize: 12 }}>{item.start_time ? String(item.start_time).substring(0, 16) : '-'}</td>
                     <td style={{ fontSize: 12 }}>{item.end_time ? String(item.end_time).substring(0, 16) : '-'}</td>
-                    <td>{item.task_state_name ? <span className={`badge ${item.task_state_name === '完成' || item.task_state_name === '审核关闭' ? 'badge-green' : 'badge-blue'}`}>{item.task_state_name}</span> : '-'}</td>
-                    <td style={{ fontSize: 12 }}>{item.result || '-'}</td>
+                    <td>{item.task_state_name ? <span className={`badge ${['完成','审核关闭'].includes(item.task_state_name) ? 'badge-green' : 'badge-blue'}`}>{item.task_state_name}</span> : '-'}</td>
                   </tr>
                 ))}
               </tbody>
             </table>
           )}
         </div>
-        {/* 分页 */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 20px', borderTop: '1px solid var(--border)' }}>
           <span style={{ fontSize: 12, color: 'var(--text-3)' }}>共 {data.total} 条</span>
           <div style={{ display: 'flex', gap: 8 }}>
@@ -211,11 +185,6 @@ export default function Plans() {
 }
 
 function StatCard({ label, value, color }) {
-  const colorVar = color === 'red' ? 'var(--red)' : color === 'green' ? 'var(--green)' : color === 'blue' ? 'var(--blue)' : 'var(--text)'
-  return (
-    <div className="card" style={{ padding: 16 }}>
-      <div style={{ fontSize: 11, color: 'var(--text-3)', marginBottom: 4 }}>{label}</div>
-      <div style={{ fontSize: 22, fontWeight: 700, color: colorVar }}>{value}</div>
-    </div>
-  )
+  const cv = color === 'red' ? 'var(--red)' : color === 'green' ? 'var(--green)' : color === 'blue' ? 'var(--blue)' : 'var(--text)'
+  return <div className="card" style={{ padding: 16 }}><div style={{ fontSize: 11, color: 'var(--text-3)', marginBottom: 4 }}>{label}</div><div style={{ fontSize: 22, fontWeight: 700, color: cv }}>{value}</div></div>
 }
