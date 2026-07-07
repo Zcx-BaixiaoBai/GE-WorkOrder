@@ -129,15 +129,31 @@ export default function Plans() {
               const isFinished = item.finish_flag === 1
               const isInProgress = state === '进行中'
               
-              // 计算甘特条位置：相对于baseMonth的月份偏移
+              // 按天精确计算甘特条位置
+              // 将日期转为相对于baseMonth的" fractional月偏移"
+              // 例: 2026-01-15 → 偏移 = 0 + (15-1)/31 = 0.45 个月
+              const dateToMonthOffset = (d) => {
+                if (!d) return null
+                const monthInt = (d.getFullYear() - baseYear) * 12 + (d.getMonth() - baseMonth)
+                const daysInMonth = new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate()
+                const dayFraction = (d.getDate() - 1) / daysInMonth
+                return monthInt + dayFraction
+              }
+              
               let barLeft = 0, barWidth = 0
               if (start && end) {
-                const startOffset = (start.getFullYear() - baseYear) * 12 + (start.getMonth() - baseMonth)
-                const endOffset = (end.getFullYear() - baseYear) * 12 + (end.getMonth() - baseMonth) + 1
+                const startOffset = dateToMonthOffset(start)
+                const endOffset = dateToMonthOffset(end)
+                // end加1天的偏移量，让结束日包含在内
+                const endDaysInMonth = new Date(end.getFullYear(), end.getMonth() + 1, 0).getDate()
+                const endAdjusted = endOffset + 1 / endDaysInMonth
+                
                 barLeft = Math.max(0, (startOffset / 12) * 100)
-                barWidth = Math.max(3, ((endOffset - startOffset) / 12) * 100)
-                if (barLeft > 100) { barLeft = 0; barWidth = 0 } // 不在显示范围内
+                barWidth = Math.max(2, ((endAdjusted - startOffset) / 12) * 100)
+                // 超出显示范围的不显示
+                if (startOffset > 12 || endAdjusted < 0) { barWidth = 0 }
                 if (barLeft + barWidth > 100) barWidth = 100 - barLeft
+                if (barLeft < 0) { barWidth += barLeft; barLeft = 0 }
               }
               
               const barColor = isFinished ? 'var(--green)' : isPaused ? 'var(--text-3)' : isOverdue ? 'var(--red)' : isInProgress ? 'var(--blue)' : 'var(--yellow)'
