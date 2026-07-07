@@ -84,22 +84,38 @@ export default function Plans() {
     )
   }
 
-  // ===== 真正的甘特图 =====
+  // ===== 真正的甘特图（动态月份范围）=====
   const renderGantt = () => {
     const ganttItems = (data.items || []).slice(0, 20)
     if (ganttItems.length === 0) return null
 
+    // 根据selectedMonth计算显示的12个月范围
+    let baseYear = 2026, baseMonth = 0
+    if (selectedMonth) {
+      const [y, m] = selectedMonth.split('-')
+      baseYear = parseInt(y)
+      baseMonth = parseInt(m) - 1
+    }
+    // 生成12个月的标签和偏移
+    const ganttMonths = []
+    for (let i = 0; i < 12; i++) {
+      const d = new Date(baseYear, baseMonth + i, 1)
+      ganttMonths.push({ label: `${d.getMonth() + 1}月`, year: d.getFullYear(), month: d.getMonth() })
+    }
+
     return (
       <div className="card" style={{ marginBottom: 16, overflow: 'hidden' }}>
-        <div className="card-header"><span className="card-title">甘特图（前20条）</span></div>
+        <div className="card-header"><span className="card-title">甘特图（前20条）{selectedMonth ? `· ${selectedMonth}起` : '· 全年'}</span></div>
         <div className="card-body" style={{ overflowX: 'auto' }}>
           <div style={{ minWidth: 900 }}>
             {/* 表头：任务名 + 12个月 */}
             <div style={{ display: 'flex', borderBottom: '1px solid var(--border)', paddingBottom: 6, marginBottom: 6 }}>
               <div style={{ width: 180, flexShrink: 0, fontSize: 11, fontWeight: 600, color: 'var(--text-3)' }}>任务名称</div>
               <div style={{ flex: 1, display: 'flex' }}>
-                {MONTHS.map((m, i) => (
-                  <div key={i} style={{ flex: 1, fontSize: 11, color: 'var(--text-3)', textAlign: 'center', borderLeft: '1px solid var(--border)' }}>{m}</div>
+                {ganttMonths.map((m, i) => (
+                  <div key={i} style={{ flex: 1, fontSize: 11, color: 'var(--text-3)', textAlign: 'center', borderLeft: '1px solid var(--border)' }}>
+                    {m.label}{m.month === 0 ? <span style="color: 'var(--text-2)">'{String(m.year).slice(-2)}</span> : ''}
+                  </div>
                 ))}
               </div>
             </div>
@@ -113,14 +129,14 @@ export default function Plans() {
               const isFinished = item.finish_flag === 1
               const isInProgress = state === '进行中'
               
-              // 计算甘特条位置：月份1-12映射到0-100%
+              // 计算甘特条位置：相对于baseMonth的月份偏移
               let barLeft = 0, barWidth = 0
               if (start && end) {
-                const startMonth = (start.getFullYear() - 2026) * 12 + start.getMonth()
-                const endMonth = (end.getFullYear() - 2026) * 12 + end.getMonth() + 1
-                barLeft = Math.max(0, (startMonth / 12) * 100)
-                barWidth = Math.max(3, ((endMonth - startMonth) / 12) * 100)
-                if (barLeft > 90) barLeft = 85
+                const startOffset = (start.getFullYear() - baseYear) * 12 + (start.getMonth() - baseMonth)
+                const endOffset = (end.getFullYear() - baseYear) * 12 + (end.getMonth() - baseMonth) + 1
+                barLeft = Math.max(0, (startOffset / 12) * 100)
+                barWidth = Math.max(3, ((endOffset - startOffset) / 12) * 100)
+                if (barLeft > 100) { barLeft = 0; barWidth = 0 } // 不在显示范围内
                 if (barLeft + barWidth > 100) barWidth = 100 - barLeft
               }
               
@@ -134,11 +150,11 @@ export default function Plans() {
                   </div>
                   <div style={{ flex: 1, position: 'relative', height: '100%' }}>
                     {/* 月份网格线 */}
-                    {MONTHS.map((_, i) => (
+                    {ganttMonths.map((_, i) => (
                       <div key={i} style={{ position: 'absolute', left: `${(i / 12) * 100}%`, top: 0, bottom: 0, width: 1, background: 'var(--border)' }} />
                     ))}
                     {/* 甘特条 */}
-                    {start && end && (
+                    {start && end && barWidth > 0 && (
                       <div style={{
                         position: 'absolute',
                         left: `${barLeft}%`,
