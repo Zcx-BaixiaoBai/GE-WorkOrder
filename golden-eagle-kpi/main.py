@@ -5,7 +5,7 @@ import logging
 from pathlib import Path
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import RedirectResponse, HTMLResponse
@@ -249,6 +249,21 @@ def create_app() -> FastAPI:
     @app.get("/api/health", include_in_schema=False)
     def health_check():
         return {"status": "ok", "version": "1.1.0", "host": AppConfig.SERVER_HOST, "port": AppConfig.SERVER_PORT}
+
+    # SPA catch-all: 所有非API路由返回React index.html（必须在所有API路由之后）
+    @app.get("/{full_path:path}", include_in_schema=False)
+    async def spa_fallback(full_path: str):
+        if full_path.startswith("api/") or full_path.startswith("static/") or full_path.startswith("assets/"):
+            raise HTTPException(status_code=404, detail="Not Found")
+        react_index = react_dist / "index.html"
+        if react_index.exists():
+            with open(react_index, "r", encoding="utf-8") as f:
+                return HTMLResponse(f.read())
+        old_index = frontend_dir / "index.html"
+        if old_index.exists():
+            with open(old_index, "r", encoding="utf-8") as f:
+                return HTMLResponse(f.read())
+        raise HTTPException(status_code=404, detail="Not Found")
 
     return app
 
