@@ -1,4 +1,4 @@
-# 金鹰工单KPI管理系统 — 全面代码审查报告
+﻿# 金鹰工单KPI管理系统 — 全面代码审查报告
 
 > **审查日期**: 2026-07-07  
 > **审查范围**: 后端 35 个 Python 文件 + 前端 6853 行 HTML  
@@ -13,10 +13,10 @@
 | 文件 | 行号 | 内容 |
 |------|------|------|
 | `backend/api/ai_chat.py` | L17 | NVIDIA API Key 明文写死 |
-| `backend/config.py` | L57 | JWT Secret 写死 `"golden-eagle-kpi-secret-key-2026"` |
-| `backend/scraper/wy_crawler.py` | L57-60 | WY系统账密 `juhaifeng/jhf123456` + token |
-| `backend/api/sync_all.py` | L18-19 | BI爬虫账密 `zhangchenxi/Zcx020618` |
-| `backend/api/sync_ipms.py` | L54 | IPMS默认密码 `123654` |
+| `backend/config.py` | L57 | JWT Secret 写死 `"YOUR_JWT_SECRET_HERE"` |
+| `backend/scraper/wy_crawler.py` | L57-60 | WY系统账密 `YOUR_WY_USERNAME_HERE/YOUR_WY_PASSWORD_HERE` + token |
+| `backend/api/sync_all.py` | L18-19 | BI爬虫账密 `zhangchenxi/YOUR_SCRAPER_PASSWORD_HERE` |
+| `backend/api/sync_ipms.py` | L54 | IPMS默认密码 `YOUR_IPMS_PASSWORD_HERE` |
 | `backend/api/update.py` | L26-28 | Gitee Token 从文件读取（可接受，但文件在data目录无保护） |
 
 **风险**: 源码泄露即全部凭证暴露。GitHub仓库已公开，ai_chat.py 的 API Key 已上传。

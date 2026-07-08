@@ -1,9 +1,9 @@
-"""
+﻿"""
 筹建专项计划管理系统爬虫
 用于爬取"筹建专项完成情况维护"数据
 
 系统: http://58.213.109.123:8181
-账号: juhaifeng / jhf123456
+账号: YOUR_WY_USERNAME_HERE / YOUR_WY_PASSWORD_HERE
 
 调用方式:
     from spider import crawl

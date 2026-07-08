@@ -1,4 +1,4 @@
-"""
+﻿"""
 IPMS设备管理系统爬虫模块
 目标: 任务管理 -> 巡检任务、维保任务
 筛选: 高级筛选 -> 结束时间 -> 当年1.1到当天
@@ -273,8 +273,8 @@ def create_readable_excel(raw_data: List[Dict], filename: str) -> None:
 
 
 def crawl(
-    username: str = 'njjyadmin',
-    password: str = '123654',
+    username: str = 'YOUR_IPMS_USERNAME_HERE',
+    password: str = 'YOUR_IPMS_PASSWORD_HERE',
     start_date: str = None,
     end_date: str = None,
     output_dir: str = '.'
