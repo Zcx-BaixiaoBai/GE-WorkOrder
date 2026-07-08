@@ -70,8 +70,13 @@ class AppConfig:
     HOST = "127.0.0.1"
     PORT = 8765
 
-    # JWT配置 (环境变量: JWT_SECRET，生产必须设置)
-    JWT_SECRET = _env("JWT_SECRET")  # 无默认值，缺失时报错
+    # JWT配置 (环境变量: JWT_SECRET，缺失时自动生成随机值)
+    JWT_SECRET = _env("JWT_SECRET", "")
+    if not JWT_SECRET:
+        import secrets as _secrets
+        JWT_SECRET = _secrets.token_hex(32)
+        os.environ["JWT_SECRET"] = JWT_SECRET
+        print("[配置] JWT_SECRET 未设置，已自动生成随机值（首次启动）")
     JWT_ALGORITHM = "HS256"
     JWT_EXPIRE_HOURS = 8
 
@@ -93,9 +98,44 @@ class AppConfig:
 
     @classmethod
     def ensure_dirs(cls):
-        """确保所有必要目录存在"""
+        """确保所有必要目录存在 + 首次启动自动创建.env"""
         for d in [cls.DATA_DIR, cls.EXPORTS_DIR, cls.LOGS_DIR]:
             d.mkdir(parents=True, exist_ok=True)
+        
+        # 首次启动：如果.env不存在，从.env.example复制或创建默认配置
+        if cls._frozen:
+            env_path = Path(sys.executable).parent / ".env"
+        else:
+            env_path = cls.BASE_DIR / ".env"
+        
+        if not env_path.exists():
+            # 尝试从.env.example复制
+            example_path = cls.BASE_DIR / ".env.example"
+            if example_path.exists():
+                import shutil
+                shutil.copy(example_path, env_path)
+                print(f"[配置] 已从 .env.example 创建 .env 文件: {env_path}")
+                print("[配置] 首次启动模式：DEV_MODE=1，任意工号可登录为管理员")
+                print("[配置] 请登录后在「系统配置 > AI配置」中设置 API Key")
+            else:
+                # 创建最小.env
+                import secrets as _secrets
+                env_content = f"""# 金鹰工单KPI管理系统 - 首次自动生成
+SERVER_HOST=127.0.0.1
+SERVER_PORT=8765
+DEV_MODE=1
+JWT_SECRET={_secrets.token_hex(32)}
+# AI配置（请在系统配置页填写）
+AI_API_KEY=
+AI_MODEL=qwen/qwen3.5-122b-a10b
+AI_INVOKE_URL=https://integrate.api.nvidia.com/v1/chat/completions
+AI_MAX_TOKENS=16384
+AI_TEMPERATURE=0.60
+"""
+                env_path.write_text(env_content, encoding="utf-8")
+                print(f"[配置] 已自动创建 .env 文件: {env_path}")
+                print("[配置] 首次启动模式：DEV_MODE=1，任意工号可登录为管理员")
+                print("[配置] 请登录后在「系统配置 > AI配置」中设置 API Key")
 
     @classmethod
     def get_db_url(cls) -> str:
