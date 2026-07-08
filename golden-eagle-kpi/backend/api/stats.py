@@ -74,7 +74,7 @@ def get_dashboard_stats(
 
 @router.get("/initiation")
 def get_initiation(
-    projectId: int = Query(...),
+    projectId: int = Query(None),
     month: str = Query(None),
     db: Session = Depends(get_db),
 ):
@@ -100,7 +100,7 @@ def get_warnings(
 
 @router.get("/completion")
 def get_completion(
-    projectId: int = Query(...),
+    projectId: int = Query(None),
     month: str = Query(None),
     db: Session = Depends(get_db),
 ):
@@ -110,7 +110,7 @@ def get_completion(
 
 @router.get("/score")
 def get_score(
-    projectId: int = Query(...),
+    projectId: int = Query(None),
     month: str = Query(None),
     db: Session = Depends(get_db),
 ):
