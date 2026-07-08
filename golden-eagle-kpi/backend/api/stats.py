@@ -44,6 +44,21 @@ def get_available_months(
         """
         rows = db.execute(text(sql)).fetchall()
     months = sorted(set(r[0] for r in rows if r[0]), reverse=True)
+    
+    # 补充当前月份及前5个月（即使无数据也显示，方便用户选择）
+    from datetime import datetime
+    now = datetime.now()
+    for i in range(6):
+        y = now.year
+        m = now.month - i
+        while m <= 0:
+            m += 12
+            y -= 1
+        month_str = f"{y}-{m:02d}"
+        if month_str not in months:
+            months.append(month_str)
+    months = sorted(months, reverse=True)
+    
     return {"months": months}
 
 
