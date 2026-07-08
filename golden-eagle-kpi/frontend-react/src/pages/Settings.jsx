@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react'
 import api from '../services/api'
 import { useAuth } from '../services/auth'
 import SyncScheduleTab from '../components/SyncScheduleTab'
+import AIConfigTab from '../components/AIConfigTab'
 
 const TABS = [
   { key: 'import', label: '人力清单' },
@@ -11,6 +12,7 @@ const TABS = [
   { key: 'dict', label: '数据字典' },
   { key: 'pm', label: '项目负责人' },
   { key: 'sync', label: '定时任务', adminOnly: true },
+  { key: 'ai', label: 'AI配置', adminOnly: true },
 ]
 
 export default function Settings() {
@@ -35,6 +37,7 @@ export default function Settings() {
       {tab === 'dict' && <DictTab />}
       {tab === 'pm' && <PMTab />}
       {tab === 'sync' && isAdmin() && <SyncScheduleTab />}
+      {tab === 'ai' && isAdmin() && <AIConfigTab />}
     </div>
   )
 }

@@ -198,6 +198,7 @@ def create_app() -> FastAPI:
     from backend.api.ipms import router as ipms_router
     from backend.api.project_manager import router as project_manager_router
     from backend.api.sync_schedule_config import router as sync_schedule_router
+    from backend.api.ai_config import router as ai_config_router
 
     app.include_router(auth_router)
     app.include_router(stats_router)
@@ -217,6 +218,7 @@ def create_app() -> FastAPI:
     app.include_router(ipms_router)
     app.include_router(project_manager_router)
     app.include_router(sync_schedule_router)
+    app.include_router(ai_config_router)
 
     # 关闭应用API（需认证）
     import os
