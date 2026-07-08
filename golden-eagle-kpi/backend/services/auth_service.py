@@ -69,8 +69,11 @@ class AuthService:
         # 6. 获取项目名称
         project = db.query(Project).filter(Project.id == pid).first() if pid else None
 
+        # 系统管理员不受项目限制，可查看全部项目
+        admin_pid = None if system_role == "系统管理员" else pid
+        
         # 7. 生成JWT
-        token = AuthService._generate_token(clean_id, account, system_role, pid)
+        token = AuthService._generate_token(clean_id, account, system_role, admin_pid)
 
         # 8. 保存会话
         session = UserSession(
@@ -78,7 +81,7 @@ class AuthService:
             employee_id=clean_id,
             name=person_name,
             role=system_role,
-            project_id=pid,
+            project_id=admin_pid,
             account=account,
             expires_at=datetime.now() + timedelta(hours=AppConfig.JWT_EXPIRE_HOURS),
         )
@@ -93,8 +96,8 @@ class AuthService:
                 "account": account,
                 "name": person_name,
                 "role": system_role,
-                "projectId": str(pid) if pid else None,
-                "projectName": project.name if project else None,
+                "projectId": str(admin_pid) if admin_pid else None,
+                "projectName": "全部项目" if system_role == "系统管理员" else (project.name if project else None),
             },
         }
 

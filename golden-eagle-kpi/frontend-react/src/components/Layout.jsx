@@ -1,6 +1,7 @@
 import React from 'react'
 import { NavLink, useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../services/auth'
+import api from '../services/api'
 
 const navItems = [
   { path: '/', label: '概览', icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg> },
@@ -12,9 +13,24 @@ const navItems = [
 ]
 
 export default function Layout({ children }) {
-  const { user, logout } = useAuth()
+  const { user, logout, isAdmin } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
+  const [projects, setProjects] = useState([])
+
+  useEffect(() => {
+    if (isAdmin()) {
+      api.get('/api/config/projects').then(r => setProjects(r.data.items || [])).catch(() => {})
+    }
+  }, [isAdmin])
+
+  const handleProjectChange = (e) => {
+    const val = e.target.value
+    localStorage.setItem('user_project_id', val)
+    localStorage.setItem('user_project_name', val ? projects.find(p => String(p.id) === val)?.name || '' : '全部项目')
+    // 刷新当前页面以重新加载数据
+    window.location.reload()
+  }
 
   const toggleTheme = () => {
     document.body.classList.toggle('dark')
@@ -35,7 +51,14 @@ export default function Layout({ children }) {
             <span className="app-version">v1.1.0</span>
           </div>
           <div style={{ fontSize: 12, color: 'var(--text-2)', marginTop: 4 }}>
-            {user?.projectName || '全部项目'}
+            {isAdmin() ? (
+              <select className="select" style={{ width: '100%', fontSize: 12, padding: '4px 6px' }} value={localStorage.getItem('user_project_id') || ''} onChange={handleProjectChange}>
+                <option value="">全部项目</option>
+                {projects.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+              </select>
+            ) : (
+              user?.projectName || '全部项目'
+            )}
           </div>
         </div>
         <nav className="sidebar-nav">
