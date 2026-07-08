@@ -5,11 +5,19 @@ const api = axios.create({
   timeout: 30000,
 })
 
-// 请求拦截器：自动附加 token
+// 请求拦截器：自动附加 token + 过滤空参数
 api.interceptors.request.use(config => {
   const token = localStorage.getItem('auth_token')
   if (token) {
     config.headers.Authorization = `Bearer ${token}`
+  }
+  // 过滤空字符串参数（如管理员projectId为空时不发送）
+  if (config.params) {
+    Object.keys(config.params).forEach(key => {
+      if (config.params[key] === '' || config.params[key] === null || config.params[key] === undefined) {
+        delete config.params[key]
+      }
+    })
   }
   return config
 })
