@@ -1,4 +1,4 @@
-"""金鹰工单KPI管理 - AI对话服务"""
+﻿"""金鹰工单KPI管理 - AI对话服务"""
 from __future__ import annotations
 
 import os
@@ -14,7 +14,7 @@ router = APIRouter(prefix="/api/ai", tags=["AI对话"])
 
 AI_CONFIG = {
     "model": os.environ.get("AI_MODEL", "qwen/qwen3.5-122b-a10b"),
-    "api_key": os.environ.get("AI_API_KEY", "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"),
+    "api_key": os.environ.get("AI_API_KEY", "YOUR_AI_API_KEY_HERE"),
     "invoke_url": os.environ.get("AI_INVOKE_URL", "https://integrate.api.nvidia.com/v1/chat/completions"),
     "max_tokens": int(os.environ.get("AI_MAX_TOKENS", "16384")),
     "temperature": float(os.environ.get("AI_TEMPERATURE", "0.60")),

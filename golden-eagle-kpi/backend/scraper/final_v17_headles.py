@@ -1,4 +1,4 @@
-"""
+﻿"""
 OA BI报表导出 v17 - 全文字定位版
 严格按用户指令操作：
 1. OA登录（账号密码+点"登陆"）
@@ -19,7 +19,7 @@ DL = os.path.join(os.path.dirname(os.path.abspath(__file__)), "downloads")
 os.makedirs(DL, exist_ok=True)
 
 USERNAME = "zhangchenxi"
-PASSWORD = "Zcx020618"
+PASSWORD = "YOUR_SCRAPER_PASSWORD_HERE"
 
 SNAP_COUNTER = 0
 

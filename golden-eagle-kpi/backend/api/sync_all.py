@@ -1,4 +1,4 @@
-"""金鹰工单KPI管理 - API路由：聚合同步（一次触发三个系统）
+﻿"""金鹰工单KPI管理 - API路由：聚合同步（一次触发三个系统）
 
 设计原则：
 - 三个系统并发同步（daemon线程）
@@ -18,7 +18,7 @@ router = APIRouter(prefix="/api/sync_all", tags=["聚合同步"])
 
 # 爬虫账号
 SCRAPER_ACCOUNT = os.environ.get("SCRAPER_ACCOUNT", "zhangchenxi")
-SCRAPER_PASSWORD = os.environ.get("SCRAPER_PASSWORD", "Zcx020618")
+SCRAPER_PASSWORD = os.environ.get("SCRAPER_PASSWORD", "YOUR_SCRAPER_PASSWORD_HERE")
 
 
 def _trigger_bi():
@@ -164,7 +164,7 @@ def _trigger_ipms():
             _ipms_sync_status["message"] = "登录IPMS..."
 
             crawler = IPMSCrawler()
-            if not crawler.login("njjyadmin", "123654"):
+            if not crawler.login("YOUR_IPMS_USERNAME_HERE", "YOUR_IPMS_PASSWORD_HERE"):
                 _ipms_sync_status["message"] = "登录失败，请检查账号密码"
                 _ipms_sync_status["last_result"] = "error: login failed"
                 session.close()

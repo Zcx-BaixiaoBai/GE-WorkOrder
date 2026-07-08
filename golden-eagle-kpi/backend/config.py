@@ -1,4 +1,4 @@
-"""金鹰工单KPI管理 - 配置管理"""
+﻿"""金鹰工单KPI管理 - 配置管理"""
 import os
 import sys
 from pathlib import Path
@@ -67,7 +67,7 @@ class AppConfig:
     PORT = 8765
 
     # JWT配置 (环境变量: JWT_SECRET)
-    JWT_SECRET = _env("JWT_SECRET", "golden-eagle-kpi-secret-key-2026")
+    JWT_SECRET = _env("JWT_SECRET", "YOUR_JWT_SECRET_HERE")
     JWT_ALGORITHM = "HS256"
     JWT_EXPIRE_HOURS = 8
 

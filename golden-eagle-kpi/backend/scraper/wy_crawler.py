@@ -1,9 +1,9 @@
-"""
+﻿"""
 筹建专项计划管理系统爬虫
 用于爬取"筹建专项完成情况维护"数据
 
 系统: http://58.213.109.123:8181
-账号: juhaifeng / jhf123456
+账号: YOUR_WY_USERNAME_HERE / YOUR_WY_PASSWORD_HERE
 
 调用方式:
     from spider import crawl
@@ -50,9 +50,9 @@ def _write_dicts_to_excel(data: List[Dict], filepath: str, columns: List[str] = 
 # ============== 配置 ==============
 CONFIG = {
     'base_url': 'http://58.213.109.123:8181',
-    'token': '9c3dbd4e-552b-48b3-af7a-e2431519e617',
-    'username': 'juhaifeng',
-    'password': 'jhf123456',
+    'token': 'YOUR_WY_TOKEN_HERE',
+    'username': 'YOUR_WY_USERNAME_HERE',
+    'password': 'YOUR_WY_PASSWORD_HERE',
 }
 
 # ============== 字段映射 ==============

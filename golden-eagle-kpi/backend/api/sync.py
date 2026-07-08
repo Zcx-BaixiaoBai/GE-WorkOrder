@@ -1,4 +1,4 @@
-"""金鹰工单KPI管理 - API路由：数据同步"""
+﻿"""金鹰工单KPI管理 - API路由：数据同步"""
 
 import os
 import shutil
@@ -13,7 +13,7 @@ router = APIRouter(prefix="/api/sync", tags=["数据同步"])
 
 # 爬虫账号（从环境变量读取，默认值用于开发）
 SCRAPER_ACCOUNT = os.environ.get("SCRAPER_ACCOUNT", "zhangchenxi")
-SCRAPER_PASSWORD = os.environ.get("SCRAPER_PASSWORD", "Zcx020618")
+SCRAPER_PASSWORD = os.environ.get("SCRAPER_PASSWORD", "YOUR_SCRAPER_PASSWORD_HERE")
 
 
 class SyncRequest(BaseModel):

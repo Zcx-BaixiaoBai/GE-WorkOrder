@@ -1,4 +1,4 @@
-"""金鹰工单KPI管理 - API路由：IPMS设备管理同步"""
+﻿"""金鹰工单KPI管理 - API路由：IPMS设备管理同步"""
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
@@ -50,8 +50,8 @@ def sync_ipms(request: SyncIPMSRequest = None, db: Session = Depends(get_db)):
     else:
         end_date = datetime.now().strftime("%Y-%m-%d")
 
-    username = (request.username or "njjyadmin").strip()
-    password = (request.password or "123654").strip()
+    username = (request.username or "YOUR_IPMS_USERNAME_HERE").strip()
+    password = (request.password or "YOUR_IPMS_PASSWORD_HERE").strip()
 
     def _run():
         global _ipms_sync_status
