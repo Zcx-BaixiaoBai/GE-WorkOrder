@@ -278,7 +278,7 @@ app = create_app()
 # ============================================================
 
 def _load_sync_schedule(scheduler):
-    """从数据库加载定时同步配置到 APScheduler"""
+    """从数据库加载定时同步任务到 APScheduler（任务制）"""
     import json
     from backend.database import get_session_local
     from backend.models.sync_schedule_config import SyncScheduleConfig
@@ -286,27 +286,22 @@ def _load_sync_schedule(scheduler):
 
     db = get_session_local()()
     try:
-        # 确保默认配置存在
-        from backend.api.sync_schedule_config import _ensure_default_configs
-        _ensure_default_configs(db)
-
-        configs = db.query(SyncScheduleConfig).all()
+        configs = db.query(SyncScheduleConfig).filter(SyncScheduleConfig.enabled == True).all()
         for cfg in configs:
-            if not cfg.enabled:
-                continue
             times = json.loads(cfg.cron_times) if cfg.cron_times else []
+            channels = json.loads(cfg.channels) if cfg.channels else []
             for time_str in times:
                 hour, minute = int(time_str.split(":")[0]), int(time_str.split(":")[1])
-                job_id = f"sync_{cfg.channel}_{hour:02d}{minute:02d}"
+                job_id = f"sync_task{cfg.id}_{hour:02d}{minute:02d}"
                 scheduler.add_job(
                     _run_scheduled_sync,
                     CronTrigger(hour=hour, minute=minute, timezone="Asia/Shanghai"),
                     id=job_id,
                     replace_existing=True,
-                    kwargs={"systems": [cfg.channel]},
+                    kwargs={"systems": channels},
                 )
             if times:
-                print(f"[定时] {cfg.channel.upper()} 通道: {', '.join(times)}")
+                print(f"[定时] 任务{cfg.id}({cfg.name}): {', '.join(channels)} @ {', '.join(times)}")
     finally:
         db.close()
 
