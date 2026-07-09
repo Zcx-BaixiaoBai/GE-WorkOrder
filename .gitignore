@@ -12,6 +12,9 @@ __pycache__/
 # App data (contains user data)
 golden-eagle-kpi/data/
 data/
+# 保留初始数据库(40项目+900人员)
+!golden-eagle-kpi/data/golden_eagle_kpi.db
+!data/golden_eagle_kpi.db
 
 # IDE
 .vscode/

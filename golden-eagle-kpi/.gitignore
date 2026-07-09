@@ -16,10 +16,11 @@ dist/
 releases/
 data/downloads/
 data/exports/
-*.db
 *.db-journal
 *.db-wal
 *.db-shm
+# 保留主数据库（初始人员+项目数据）
+!data/golden_eagle_kpi.db
 
 # Logs
 *.log
