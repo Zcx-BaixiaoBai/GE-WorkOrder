@@ -82,7 +82,7 @@ class SyncService:
           90-100 刷新映射
         """
         try:
-            from backend.scraper.bi_client import BiClient
+            from backend.scraper.bi_api_client import BiApiClient
         except ImportError as e:
             _sync_status["is_syncing"] = False
             _sync_status["progress"] = 0
@@ -123,7 +123,7 @@ class SyncService:
             _sync_status["message"] = "正在登录BI系统..."
             _sync_status["progress"] = 2
 
-            client = BiClient(account, password)
+            client = BiApiClient(account, password)
 
             # 总超时保护：整个同步任务最多5分钟
             async def _fetch_with_timeout():
